@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  geth:
+    image: ethereum/client-go:latest
+    command:
+      - --nat=extip:__EXTERNAL_IP__
+      - --datadir=/root/.ethereum
+      - --networkid=__CHAIN_ID__
+      - --http
+      - --http.addr=0.0.0.0
+      - --http.port=<your_http_port>
+      - --http.api=eth,net,web3,personal,admin
+      - --authrpc.addr=0.0.0.0
+      - --authrpc.port=<your_authrpc_port>
+      - --authrpc.jwtsecret=/root/.ethereum/jwt.hex
+      - --syncmode=full
+      - --port=<your_p2p_port>
+    ports:
+      - "<your_authrpc_port>:<your_authrpc_port>"
+      - "<your_http_port>:<your_http_port>"
+      - "<your_p2p_port>:<your_p2p_port>"
+    volumes:
+      - ./execution:/root/.ethereum/
+      - ./jwt.hex:/root/.ethereum/jwt.hex
+
+  beacon:
+    image: gcr.io/prysmaticlabs/prysm/beacon-chain:latest
+    command:
+      - --datadir=/consensus/beacondata
+      - --genesis-state=/consensus/genesis.ssz
+      - --chain-config-file=/consensus/config.yml
+      - --execution-endpoint=http://__EXTERNAL_IP__:__YOUR_AUTHRPC_PORT__
+      - --jwt-secret=/jwt.hex
+      - --p2p-host-ip=__EXTERNAL_IP
+    depends_on:
+      geth:
+        condition: service_started
+    ports:
+      - "<your_rpc_port>:<your_rpc_port>"
+      - "<your_p2p_tcp_port>:<your_p2p_tcp_port>"
+      - "<your_p2p_udp_port>:<your_p2p_udp_port>/udp"
+    volumes:
+      - ./consensus:/consensus
+      - ./jwt.hex:/jwt.hex
+
+  validator:
+    image: gcr.io/prysmaticlabs/prysm/validator:latest
+    command:
+      - --beacon-rpc-provider=__EXTERNAL_IP__:__YOUR_RPC_PORT__
+      - --datadir=/consensus/validatordata
+      - --chain-config-file=/consensus/config.yml
+      - --suggested-fee-recipient=0x__ADDRESS__
+    depends_on:
+      beacon:
+        condition: service_started
+    ports:
+      - "<your_validator_port>:<your_validator_port>"
+    volumes:
+      - ./consensus:/consensus
