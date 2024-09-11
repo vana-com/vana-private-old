@@ -8,7 +8,6 @@ Before getting started, ensure you have the following installed:
 
 - **Docker**: [Install Docker](https://docs.docker.com/get-docker/)
 - **Docker Compose**: [Install Docker Compose](https://docs.docker.com/compose/install/)
-- **Google Cloud SDK (gcloud)**: [Install gcloud](https://cloud.google.com/sdk/docs/install) if using Google Cloud resources.
 - **OpenSSL**: To handle key and token generation. Install via your package manager:
   ```bash
   sudo apt-get install openssl  # Debian-based systems
@@ -31,26 +30,30 @@ cd vana
 The `.env` file contains the necessary environment variables to set up your validator. Here's what needs to be configured:
 
 ```bash
-# GCP configuration (if using Google Cloud)
-PROJECT=<your-gcloud-project-id>
-ZONE=<your-gcloud-zone>
-
-# VM configuration
-VM_NAME_PREFIX=<validator-vm-prefix>
-VM_MACHINE_TYPE=<machine-type>
-VM_BOOT_DISK_SIZE=<disk-size-in-gb>
-VM_IMAGE_FAMILY=<ubuntu-image-family>
-VM_IMAGE_PROJECT=<ubuntu-image-project>
-
 # Network configuration
-NETWORK=<testnet/mainnet>
-CHAIN_ID=<chain-id>
-NUM_NODES=<number-of-nodes>
-NUM_VALIDATORS_PER_NODE=<validators-per-node>
-VALIDATOR_BALANCE=<validator-balance-in-wei>
+NETWORK=mainnet
+CHAIN_ID=1337
+NUM_NODES=3
+NUM_VALIDATORS_PER_NODE=1
+VALIDATOR_BALANCE=32000000000000000000  # 32 ETH in Wei
 
 # Seed for deterministic key generation
-SEED=<your-random-seed>
+SEED=my-secure-random-seed
+
+# Geth node configuration
+EXTERNAL_IP=192.168.1.100
+HTTP_PORT=8545
+AUTHRPC_PORT=8551
+P2P_PORT=30303
+
+# Beacon chain configuration
+RPC_PORT=4000
+P2P_TCP_PORT=13000
+P2P_UDP_PORT=12000
+
+# Validator configuration
+VALIDATOR_PORT=7500
+VALIDATOR_ADDRESS=0xYourValidatorEthereumAddress
 ```
 
 Make sure the following fields are set according to your private mainnet’s configuration:
@@ -69,10 +72,10 @@ You will need to generate your own validator keys to join the PoS network. We re
 
 Once your keys are generated, ensure they are stored securely and backed up.
 
-Place the generated key files in the appropriate directories within your configuration folder:
+In the provided config directory, there are dummy files placed to show where your actual files need to go. These placeholders are structured to guide you, and they should be replaced with the real files you generate:
 
 - Keystore files: Place these in `./config/execution/keystore`.
-- Password file: Place in `.`/config/execution/password.txt`.
+- Password file: Place in `./config/execution/password.txt`.
 - JWT Token: Place the token in `./config/jwt.hex`.
 Ensure these files have the correct permissions and are accessible by your Docker containers.
 
@@ -115,10 +118,7 @@ Once you have the necessary configuration files and keys in place, you can deplo
 
 We have provided a Docker Compose template that you can use to set up your validator, execution (Geth), and beacon nodes. The template includes all the necessary configurations for running your validator node in a local Docker environment.
 
-1. Customize the Docker Compose template with your network-specific values such as:
-   - `__EXTERNAL_IP__`
-   - `__CHAIN_ID__`
-   - `<your_http_port>`, `<your_authrpc_port>`, and other ports.
+1. Customize the Docker Compose template with your network-specific values.
 
 2. Ensure that the required files (like `genesis.json`, `genesis.ssz`, JWT token, and keystore) are in the correct directories as specified in the Docker Compose template.
 
@@ -130,21 +130,33 @@ We have provided a Docker Compose template that you can use to set up your valid
 
    This will start your validator node, along with the execution and beacon nodes, connecting you to the PoS network.
 
-#### 2. **Deploy on Google Cloud (Optional)**
-
-If you want to deploy your validator node on Google Cloud, follow the official [Google Cloud documentation](https://cloud.google.com/docs) for setting up a virtual machine, installing Docker, and configuring your environment.
-
-This approach allows you to run your validator in a cloud environment, providing scalability and reliability for long-term operation.
-
-Ensure that your Docker Compose configuration and required files are correctly transferred to the cloud environment before running the validator.
-
 ### 6. Verify the Validator is Running
 
-Once the validator node is running, you can verify its status by checking the logs.
+Once the validator node and other components are running, you can verify their status by checking the logs for specific messages that indicate successful operation.
 
-```bash
-docker logs -f <container_name>
-```
+- **Execution Layer (Geth)**: Check if Geth is syncing and connected to peers.
+
+  ```bash
+  docker logs -f <geth_container_name> | grep -i "Looking for peers"
+  ```
+
+  This confirms that the execution layer is looking for and connecting to peers. You may also see syncing progress.
+
+- **Beacon Chain**: Ensure the beacon chain is connected and functioning properly.
+
+  ```bash
+  docker logs -f <beacon_container_name> | grep -i "gRPC client connected to beacon node"
+  ```
+
+  This confirms the beacon chain is connected to the network.
+
+- **Validator**: Verify the validator is performing its duties.
+
+  ```bash
+  docker logs -f <validator_container_name> | grep -i "Submitted new sync contribution and proof"
+  ```
+
+  This confirms that the validator is participating in block validation.
 
 ## Troubleshooting
 

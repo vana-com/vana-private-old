@@ -4,22 +4,22 @@ services:
   geth:
     image: ethereum/client-go:latest
     command:
-      - --nat=extip:__EXTERNAL_IP__
+      - --nat=extip:${EXTERNAL_IP}
       - --datadir=/root/.ethereum
-      - --networkid=__CHAIN_ID__
+      - --networkid=${CHAIN_ID}
       - --http
       - --http.addr=0.0.0.0
-      - --http.port=<your_http_port>
+      - --http.port=${HTTP_PORT}
       - --http.api=eth,net,web3,personal,admin
       - --authrpc.addr=0.0.0.0
-      - --authrpc.port=<your_authrpc_port>
+      - --authrpc.port=${AUTHRPC_PORT}
       - --authrpc.jwtsecret=/root/.ethereum/jwt.hex
       - --syncmode=full
-      - --port=<your_p2p_port>
+      - --port=${P2P_PORT}
     ports:
-      - "<your_authrpc_port>:<your_authrpc_port>"
-      - "<your_http_port>:<your_http_port>"
-      - "<your_p2p_port>:<your_p2p_port>"
+      - "${AUTHRPC_PORT}:${AUTHRPC_PORT}"
+      - "${HTTP_PORT}:${HTTP_PORT}"
+      - "${P2P_PORT}:${P2P_PORT}"
     volumes:
       - ./execution:/root/.ethereum/
       - ./jwt.hex:/root/.ethereum/jwt.hex
@@ -30,16 +30,16 @@ services:
       - --datadir=/consensus/beacondata
       - --genesis-state=/consensus/genesis.ssz
       - --chain-config-file=/consensus/config.yml
-      - --execution-endpoint=http://__EXTERNAL_IP__:__YOUR_AUTHRPC_PORT__
+      - --execution-endpoint=http://${EXTERNAL_IP}:${AUTHRPC_PORT}
       - --jwt-secret=/jwt.hex
-      - --p2p-host-ip=__EXTERNAL_IP
+      - --p2p-host-ip=${EXTERNAL_IP}
     depends_on:
       geth:
         condition: service_started
     ports:
-      - "<your_rpc_port>:<your_rpc_port>"
-      - "<your_p2p_tcp_port>:<your_p2p_tcp_port>"
-      - "<your_p2p_udp_port>:<your_p2p_udp_port>/udp"
+      - "${RPC_PORT}:${RPC_PORT}"
+      - "${P2P_TCP_PORT}:${P2P_TCP_PORT}"
+      - "${P2P_UDP_PORT}:${P2P_UDP_PORT}/udp"
     volumes:
       - ./consensus:/consensus
       - ./jwt.hex:/jwt.hex
@@ -47,14 +47,14 @@ services:
   validator:
     image: gcr.io/prysmaticlabs/prysm/validator:latest
     command:
-      - --beacon-rpc-provider=__EXTERNAL_IP__:__YOUR_RPC_PORT__
+      - --beacon-rpc-provider=${EXTERNAL_IP}:${RPC_PORT}
       - --datadir=/consensus/validatordata
       - --chain-config-file=/consensus/config.yml
-      - --suggested-fee-recipient=0x__ADDRESS__
+      - --suggested-fee-recipient=0x${VALIDATOR_ADDRESS}
     depends_on:
       beacon:
         condition: service_started
     ports:
-      - "<your_validator_port>:<your_validator_port>"
+      - "${VALIDATOR_PORT}:${VALIDATOR_PORT}"
     volumes:
       - ./consensus:/consensus
