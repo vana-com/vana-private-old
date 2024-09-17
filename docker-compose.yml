@@ -30,7 +30,11 @@ services:
     command: >
       sh -c '
       apk add -q openssl &&
-      ([ -n "$$SEED" ] && echo -n "$$SEED_jwt" | openssl dgst -sha256 -binary | xxd -p -c 32 || openssl rand -hex 32) | tr -d "\n" > /vana/jwt.hex &&
+      if [ -n "$$SEED" ]; then
+        echo -n "$${SEED}_jwt" | openssl dgst -sha256 -binary | xxd -p -c 32 | tr -d "\n" > /vana/jwt.hex
+      else
+        openssl rand -hex 32 | tr -d "\n" > /vana/jwt.hex
+      fi &&
       chmod 600 /vana/jwt.hex'
     volumes:
       - ./data:/vana
@@ -132,6 +136,8 @@ services:
       - --chain-config-file=/vana/consensus/config.yml
       - --execution-endpoint=http://geth:${AUTHRPC_PORT}
       - --jwt-secret=/vana/jwt.hex
+      - --rpc-host=${EXTERNAL_IP}
+      - --rpc-port=${RPC_PORT}
       - --p2p-host-ip=${EXTERNAL_IP}
       - --bootstrap-node=${PRYSM_PEER_1}
       - --peer=${PRYSM_PEER_1}
@@ -247,7 +253,7 @@ services:
       - --wallet-dir=/vana/wallet
       - --wallet-password-file=/vana/secrets/wallet_password.txt
       - --chain-config-file=/vana/consensus/config.yml
-      - --suggested-fee-recipient=${VALIDATOR_ADDRESS}
+      #- --suggested-fee-recipient=${VALIDATOR_ADDRESS}
       - --rpc-port=${VALIDATOR_PORT:-7000}
     depends_on:
       beacon:

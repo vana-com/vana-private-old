@@ -11,6 +11,7 @@ This guide will help you set up a validator node for the Vana Proof-of-Stake (Po
   sudo apt-get install openssl  # Debian-based systems
   brew install openssl          # macOS
   ```
+- Hardware: Ensure your system meets the [minimum hardware requirements](https://docs.vana.org/vana/core-concepts/roles/propagators#hardware-requirements) for running a Vana Propagator (Validator)
 
 ## Quick Start
 
