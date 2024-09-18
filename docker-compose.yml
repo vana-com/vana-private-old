@@ -201,28 +201,6 @@ services:
       - LANGUAGE
     profiles: ["manual"]
 
-  # TODO: non-interactive mode doesn't seem to work. Maybe this can help: https://github.com/ethereum/staking-deposit-cli/compare/master...garyng2000:staking-deposit-cli:master
-  # validator-keygen:
-  #   container_name: validator-keygen
-  #   build:
-  #     context: https://github.com/vana-com/staking-deposit-cli.git#vana-main
-  #     dockerfile: Dockerfile
-  #   entrypoint: ["python3", "-m", "staking_deposit.deposit", "--language=${LANGUAGE:-English}", "--non_interactive"]
-  #   command:
-  #     - new-mnemonic
-  #     - --num_validators=${NUM_VALIDATORS:-1}
-  #     - --eth1_withdrawal_address=${WITHDRAWAL_ADDRESS}
-  #     - --language=${LANGUAGE:-English}
-  #     - --chain=vana_${NETWORK:-mainnet}
-  #   volumes:
-  #     - ./secrets:/app/validator_keys
-  #   environment:
-  #     - NUM_VALIDATORS
-  #     - WITHDRAWAL_ADDRESS
-  #     - NETWORK
-  #     - LANGUAGE
-  #   profiles: ["init"]
-
   validator-import:
     container_name: validator-import
     image: gcr.io/prysmaticlabs/prysm/validator:latest
