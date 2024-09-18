@@ -49,7 +49,7 @@ services:
     command: >
       "if [ ! -d /vana/execution/geth/chaindata ]; then
          echo 'Initializing geth...';
-         geth --datadir=/vana/execution init /vana/execution/genesis.json;
+         geth --state.scheme=${GETH_STATE_SCHEME:-path} --datadir=/vana/execution init /vana/execution/genesis.json;
          echo 'Geth initialized';
        else
          echo 'Geth already initialized';
@@ -95,26 +95,29 @@ services:
     command:
       - --verbosity=3  # 0=silent, 1=error, 2=warn, 3=info, 4=debug, 5=detail
       - --nat=extip:${EXTERNAL_IP}
-      - --datadir=/vana/execution
+      - --datadir=/root/.ethereum
       - --networkid=${CHAIN_ID}
       - --http
       - --http.vhosts=*
       - --http.addr=0.0.0.0
-      - --http.port=${HTTP_PORT}
+      - --http.port=${HTTP_PORT:-8545}
       - --http.api=eth,net,web3,personal,admin
       - --authrpc.addr=0.0.0.0
-      - --authrpc.port=${AUTHRPC_PORT}
-      - --authrpc.jwtsecret=/vana/execution/jwt.hex
-      - --syncmode=full
-      - --port=${P2P_PORT}
+      - --authrpc.port=${AUTHRPC_PORT:-8551}
+      - --authrpc.jwtsecret=/root/.ethereum/jwt.hex
+      - --authrpc.vhosts=*
+      - --syncmode=${GETH_SYNCMODE:-full}
+      - --state.scheme=${GETH_STATE_SCHEME:-path}
+      - --gcmode=${GETH_GCMODE:-full}
+      - --port=${P2P_PORT:-30303}
       - --bootnodes=${GETH_BOOTNODES}
     ports:
-      - "${AUTHRPC_PORT}:${AUTHRPC_PORT}"
-      - "${HTTP_PORT}:${HTTP_PORT}"
-      - "${P2P_PORT}:${P2P_PORT}"
+      - "${AUTHRPC_PORT:-8551}:${AUTHRPC_PORT:-8551}"
+      - "${HTTP_PORT:-8545}:${HTTP_PORT:-8545}"
+      - "${P2P_PORT:-30303}:${P2P_PORT:-30303}"
     volumes:
-      - ./data/execution:/vana/execution
-      - ./data/jwt.hex:/vana/execution/jwt.hex:ro
+      - ./data/execution:/root/.ethereum  # Use the default so that the default ipc path works, etc.
+      - ./data/jwt.hex:/root/.ethereum/jwt.hex:ro
     depends_on:
       geth-init:
         condition: service_completed_successfully
@@ -128,16 +131,19 @@ services:
     container_name: beacon
     image: gcr.io/prysmaticlabs/prysm/beacon-chain:latest
     command:
+      - --chain-id=${CHAIN_ID}
       - --accept-terms-of-use
       - --verbosity=info
       - --min-sync-peers=1
       - --datadir=/vana/consensus/beacondata
       - --genesis-state=/vana/consensus/genesis.ssz
       - --chain-config-file=/vana/consensus/config.yml
-      - --execution-endpoint=http://geth:${AUTHRPC_PORT}
+      - --execution-endpoint=http://geth:${AUTHRPC_PORT:-8545}
       - --jwt-secret=/vana/jwt.hex
-      - --rpc-host=${EXTERNAL_IP}
-      - --rpc-port=${RPC_PORT}
+      - --rpc-host=0.0.0.0
+      - --rpc-port=${RPC_PORT:-4000}
+      - --grpc-gateway-host=0.0.0.0
+      - --grpc-gateway-port=${GRPC_GATEWAY_PORT:-3500}
       - --p2p-host-ip=${EXTERNAL_IP}
       - --bootstrap-node=${PRYSM_PEER_1}
       - --peer=${PRYSM_PEER_1}
@@ -156,9 +162,10 @@ services:
       check-config:
         condition: service_completed_successfully
     ports:
-      - "${RPC_PORT}:${RPC_PORT}"
-      - "${P2P_TCP_PORT}:${P2P_TCP_PORT}"
-      - "${P2P_UDP_PORT}:${P2P_UDP_PORT}/udp"
+      - "${RPC_PORT:-4000}:${RPC_PORT:-4000}"
+      - "${GRPC_GATEWAY_PORT:-3500}:${GRPC_GATEWAY_PORT:-3500}"
+      - "${P2P_TCP_PORT:-13000}:${P2P_TCP_PORT:-13000}"
+      - "${P2P_UDP_PORT:-12000}/udp:${P2P_UDP_PORT:-12000}/udp"
     volumes:
       - ./data/jwt.hex:/vana/jwt.hex:ro
       - ./data/consensus:/vana/consensus
@@ -247,8 +254,8 @@ services:
     command:
       - --accept-terms-of-use
       - --verbosity=info
-      - --beacon-rpc-provider=${EXTERNAL_IP}:${RPC_PORT}
-      - --beacon-rest-api-provider=${EXTERNAL_IP}:${RPC_PORT}
+      - --beacon-rpc-provider=${EXTERNAL_IP}:${RPC_PORT:-4000}
+      - --beacon-rest-api-provider=${EXTERNAL_IP}:${RPC_PORT:-4000}
       - --datadir=/vana/validator
       - --wallet-dir=/vana/wallet
       - --wallet-password-file=/vana/secrets/wallet_password.txt
