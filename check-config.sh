@@ -1,5 +1,16 @@
 #!/bin/sh
 
+echo "WITHDRAWAL_ADDRESS: $WITHDRAWAL_ADDRESS"
+echo "DEPOSIT_RPC_URL: $DEPOSIT_RPC_URL"
+echo "DEPOSIT_CONTRACT_ADDRESS: $DEPOSIT_CONTRACT_ADDRESS"
+
+# Check if WITHDRAWAL_ADDRESS is set and not the default value
+if [ -z "$WITHDRAWAL_ADDRESS" ] || [ "$WITHDRAWAL_ADDRESS" = "0x0000000000000000000000000000000000000000" ]; then
+    echo "Error: WITHDRAWAL_ADDRESS is not set or is still the default value."
+    echo "Please set a valid withdrawal address in your .env file."
+    exit 1
+fi
+
 # Check if NETWORK is empty
 if [ -z "$NETWORK" ]; then
   echo "Error: NETWORK is not set. Please set the NETWORK environment variable to either 'moksha' or 'mainnet'"
@@ -49,6 +60,33 @@ if [ ! -f /vana/secrets/wallet_password.txt ]; then
 fi
 
 echo "Wallet password file check passed"
+
+# Check DEPOSIT_PRIVATE_KEY
+if [ -z "$DEPOSIT_PRIVATE_KEY" ] || [ "$DEPOSIT_PRIVATE_KEY" = "0000000000000000000000000000000000000000000000000000000000000000" ]; then
+    echo "Error: DEPOSIT_PRIVATE_KEY is not set or is still the default value."
+    echo "Please set a valid private key for deposits in your .env file."
+    exit 1
+fi
+
+echo "DEPOSIT_PRIVATE_KEY check passed"
+
+# Check DEPOSIT_RPC_URL
+if [ -z "$DEPOSIT_RPC_URL" ]; then
+    echo "Error: DEPOSIT_RPC_URL is not set."
+    echo "Please set a valid RPC URL for deposits in your .env file."
+    exit 1
+fi
+
+echo "DEPOSIT_RPC_URL check passed"
+
+# Check DEPOSIT_CONTRACT_ADDRESS
+if [ -z "$DEPOSIT_CONTRACT_ADDRESS" ]; then
+    echo "Error: DEPOSIT_CONTRACT_ADDRESS is not set."
+    echo "Please set a valid deposit contract address in your .env file."
+    exit 1
+fi
+
+echo "DEPOSIT_CONTRACT_ADDRESS check passed"
 
 # Check if JWT secret exists
 if [ ! -f /vana/data/jwt.hex ]; then

@@ -32,7 +32,16 @@ This guide will help you set up a validator node for the Vana Proof-of-Stake (Po
    docker compose --profile manual run --rm validator-keygen
    ```
 
-4. Initialize and start all services:
+4. Submit deposits for your validator:
+   ```bash
+   docker compose --profile init --profile manual run --rm submit-deposits
+   ```
+
+   Before running this command, ensure you have correctly set the `DEPOSIT_*` environment variables in your `.env` file.
+
+   This process stakes 35k VANA for each set of validator keys in secrets/ and registers them with the network.
+
+5. Initialize and start all services:
    ```bash
    docker compose --profile init --profile node up -d
    ```
@@ -45,7 +54,6 @@ Edit the `.env` file to configure your node. Key variables include:
 
 - `NETWORK`: Choose between `moksha` (testnet) or `mainnet`
 - `CHAIN_ID`: Network chain ID
-- `SEED`: A secure random seed for key generation
 - `EXTERNAL_IP`: Your node's external IP address
 - Various port configurations for different services
 
@@ -189,5 +197,25 @@ docker compose logs -f geth
 ### Environment Variables
 
 Remember that many settings are controlled via environment variables in the `.env` file. You can modify these to adjust your node's configuration.
+
+For more detailed information on Docker Compose commands and options, refer to the [official Docker Compose documentation](https://docs.docker.com/compose/reference/).
+
+## Submitting Deposits
+
+After generating validator keys and before starting your validator, you need to submit deposits for each validator. This process stakes your ETH and registers your validator(s) with the network.
+
+1. Ensure you have the following environment variables set in your `.env` file:
+   - `DEPOSIT_RPC_URL`: The RPC URL for the network on which you're submitting deposits
+   - `DEPOSIT_CONTRACT_ADDRESS`: The address of the deposit contract
+   - `DEPOSIT_PRIVATE_KEY`: The private key of the account funding the deposits
+
+2. Run the deposit submission process:
+   ```bash
+   docker compose --profile deposit run --rm submit-deposits
+   ```
+
+   This command will iterate through all generated validator keys and submit the required deposits.
+
+3. Wait for the transactions to be confirmed on the network before proceeding to start your validator.
 
 For more detailed information on Docker Compose commands and options, refer to the [official Docker Compose documentation](https://docs.docker.com/compose/reference/).

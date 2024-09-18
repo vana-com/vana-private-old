@@ -7,6 +7,10 @@ services:
       - .:/vana:ro
     environment:
       - NETWORK
+      - WITHDRAWAL_ADDRESS
+      - DEPOSIT_RPC_URL
+      - DEPOSIT_CONTRACT_ADDRESS
+      - DEPOSIT_PRIVATE_KEY
     depends_on:
       geth-init:
         condition: service_completed_successfully
@@ -14,12 +18,12 @@ services:
         condition: service_completed_successfully
       prysm-keygen:
         condition: service_completed_successfully
-    profiles: ["init", "node", "validator"]
+    profiles: ["init", "node", "validator", "manual"]
 
   clean-all:
     container_name: clean-all
     image: alpine:latest
-    command: rm -rf /vana/data
+    command: sh -c "rm -rf /vana/data/* /vana/data/.[!.]* /vana/data/..?*"
     volumes:
       - ./data:/vana/data
     profiles: ["clean"]
@@ -30,16 +34,10 @@ services:
     command: >
       sh -c '
       apk add -q openssl &&
-      if [ -n "$$SEED" ]; then
-        echo -n "$${SEED}_jwt" | openssl dgst -sha256 -binary | xxd -p -c 32 | tr -d "\n" > /vana/jwt.hex
-      else
-        openssl rand -hex 32 | tr -d "\n" > /vana/jwt.hex
-      fi &&
+      openssl rand -hex 32 | tr -d "\n" > /vana/jwt.hex &&
       chmod 600 /vana/jwt.hex'
     volumes:
       - ./data:/vana
-    environment:
-      - SEED
     profiles: ["init"]
 
   geth-init:
@@ -65,12 +63,10 @@ services:
     command: >
       sh -c '
       apk add -q openssl &&
-      ([ -n "$$SEED" ] && echo -n "$$SEED_prysm" | openssl dgst -sha256 -binary | xxd -p -c 32 || openssl rand -hex 32) | tr -d "\n" > /vana/consensus/prysm-key.hex &&
+      openssl rand -hex 32 | tr -d "\n" > /vana/consensus/prysm-key.hex &&
       chmod 600 /vana/consensus/prysm-key.hex'
     volumes:
       - ./data/consensus:/vana/consensus
-    environment:
-      - SEED
     profiles: ["init"]
 
   clean-geth:
@@ -165,7 +161,7 @@ services:
       - "${RPC_PORT:-4000}:${RPC_PORT:-4000}"
       - "${GRPC_GATEWAY_PORT:-3500}:${GRPC_GATEWAY_PORT:-3500}"
       - "${P2P_TCP_PORT:-13000}:${P2P_TCP_PORT:-13000}"
-      - "${P2P_UDP_PORT:-12000}/udp:${P2P_UDP_PORT:-12000}/udp"
+      - "${P2P_UDP_PORT:-12000}:${P2P_UDP_PORT:-12000}/udp"
     volumes:
       - ./data/jwt.hex:/vana/jwt.hex:ro
       - ./data/consensus:/vana/consensus
@@ -179,13 +175,13 @@ services:
       context: https://github.com/vana-com/staking-deposit-cli.git#vana-main
       dockerfile: Dockerfile
     entrypoint: ["/bin/sh", "-c"]
-    # Disabled by default because it requires user confirmation
-    #- --eth1_withdrawal_address=${WITHDRAWAL_ADDRESS}
     command: >
       "python3 -m staking_deposit.deposit --language=${LANGUAGE:-English} new-mnemonic
       --mnemonic_language=${LANGUAGE:-English}
       --num_validators=${NUM_VALIDATORS:-1}
-      --chain=vana_${NETWORK:-mainnet} &&
+      --chain=vana_${NETWORK:-mainnet}
+      --eth1_withdrawal_address=${WITHDRAWAL_ADDRESS} &&
+
       echo 'Please enter the account password you just entered to secure your validator keys:' &&
       read -s PASSWORD &&
       echo $$PASSWORD > /app/validator_keys/account_password.txt &&
@@ -278,3 +274,35 @@ services:
       - ./networks/${NETWORK}/config.yml:/vana/consensus/config.yml:ro
     profiles: ["node"]
 
+  submit-deposits:
+    container_name: submit-deposits
+    image: ghcr.io/foundry-rs/foundry:latest
+    volumes:
+      - ./secrets:/validator_keys
+    environment:
+      - DEPOSIT_RPC_URL
+      - DEPOSIT_CONTRACT_ADDRESS
+      - DEPOSIT_PRIVATE_KEY
+    entrypoint: ["sh", "-c"]
+    command:
+      - |
+        apk add --no-cache --quiet jq
+        for file in /validator_keys/deposit_data-*.json; do
+          PUBKEY=$(jq -r '.[0].pubkey' "$$file")
+          WITHDRAWAL_CREDENTIALS=$(jq -r '.[0].withdrawal_credentials' "$$file")
+          SIGNATURE=$(jq -r '.[0].signature' "$$file")
+          DEPOSIT_DATA_ROOT=$(jq -r '.[0].deposit_data_root' "$$file")
+          cast send $$DEPOSIT_CONTRACT_ADDRESS \
+            "deposit(bytes,bytes,bytes,bytes32)" \
+            "0x$$PUBKEY" \
+            "0x$$WITHDRAWAL_CREDENTIALS" \
+            "0x$$SIGNATURE" \
+            "0x$$DEPOSIT_DATA_ROOT" \
+            --value 35000ether \
+            --private-key $$DEPOSIT_PRIVATE_KEY \
+            --rpc-url $$DEPOSIT_RPC_URL
+        done
+    profiles: ["manual"]
+    depends_on:
+      check-config:
+        condition: service_completed_successfully
