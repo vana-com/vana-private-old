@@ -30,6 +30,8 @@ This guide will help you set up a validator node for the Vana Proof-of-Stake (Po
 3. Choose your setup:
 
    a. For running a node without a validator:
+
+   Edit the `.env` file to set the `USE_VALIDATOR` variable to `false`. It is recommended to use `GETH_SYNCMODE=snap` and to update the Prysm variables to match, per the comments in the `.env.example` file. Then run the following commands:
    ```bash
    docker compose --profile init --profile node up -d
    ```

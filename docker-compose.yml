@@ -128,10 +128,14 @@ services:
     container_name: beacon
     image: gcr.io/prysmaticlabs/prysm/beacon-chain:latest
     command:
-      - --chain-id=${CHAIN_ID}
       - --accept-terms-of-use
+      - --chain-id=${CHAIN_ID}
       - --verbosity=info
       - --min-sync-peers=1
+      - --block-batch-limit=${PRYSM_BLOCK_BATCH_LIMIT:-256}
+      - --block-batch-limit-burst-factor=${PRYSM_BLOCK_BATCH_LIMIT_BURST_FACTOR:-8}
+      - --blob-batch-limit=${PRYSM_BLOB_BATCH_LIMIT:-256}
+      - --blob-batch-limit-burst-factor=${PRYSM_BLOB_BATCH_LIMIT_BURST_FACTOR:-8}
       - --datadir=/vana/consensus/beacondata
       - --genesis-state=/vana/consensus/genesis.ssz
       - --chain-config-file=/vana/consensus/config.yml
@@ -149,6 +153,8 @@ services:
       - --peer=${PRYSM_PEER_4}
       - --peer=${PRYSM_PEER_5}
       - --p2p-priv-key=/vana/consensus/prysm-key.hex
+      - --suggested-fee-recipient=${WITHDRAWAL_ADDRESS}
+      - --slots-per-archive-point=${PRYSM_SLOTS_PER_ARCHIVE_POINT:-512}
     depends_on:
       geth:
         condition: service_started
@@ -163,6 +169,13 @@ services:
       - "${GRPC_GATEWAY_PORT:-3500}:${GRPC_GATEWAY_PORT:-3500}"
       - "${P2P_TCP_PORT:-13000}:${P2P_TCP_PORT:-13000}"
       - "${P2P_UDP_PORT:-12000}:${P2P_UDP_PORT:-12000}/udp"
+    environment:
+      - WITHDRAWAL_ADDRESS
+      - PRYSM_SLOTS_PER_ARCHIVE_POINT
+      - PRYSM_BLOCK_BATCH_LIMIT
+      - PRYSM_BLOCK_BATCH_LIMIT_BURST_FACTOR
+      - PRYSM_BLOB_BATCH_LIMIT
+      - PRYSM_BLOB_BATCH_LIMIT_BURST_FACTOR
     volumes:
       - ./data/jwt.hex:/vana/jwt.hex:ro
       - ./data/consensus:/vana/consensus
@@ -218,7 +231,7 @@ services:
       - --wallet-dir=/vana/wallet
       - --wallet-password-file=/vana/secrets/wallet_password.txt
       - --chain-config-file=/vana/consensus/config.yml
-      #- --suggested-fee-recipient=${VALIDATOR_ADDRESS}
+      - --suggested-fee-recipient=${WITHDRAWAL_ADDRESS}
       - --rpc-port=${VALIDATOR_PORT:-7000}
     depends_on:
       beacon:
@@ -229,6 +242,8 @@ services:
         condition: service_completed_successfully
     ports:
       - "${VALIDATOR_PORT:-7000}:${VALIDATOR_PORT:-7000}"
+    environment:
+      - WITHDRAWAL_ADDRESS
     volumes:
       - ./data/validator:/vana/validator
       - ./data/validator/wallet:/vana/wallet
