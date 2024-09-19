@@ -27,23 +27,31 @@ This guide will help you set up a validator node for the Vana Proof-of-Stake (Po
    # Edit .env with your preferred text editor
    ```
 
-3. Generate validator keys (interactive process):
-   ```bash
-   docker compose --profile manual run --rm validator-keygen
-   ```
+3. Choose your setup:
 
-4. Submit deposits for your validator:
-   ```bash
-   docker compose --profile init --profile manual run --rm submit-deposits
-   ```
-
-   Before running this command, ensure you have correctly set the `DEPOSIT_*` environment variables in your `.env` file.
-
-   This process stakes 35k VANA for each set of validator keys in secrets/ and registers them with the network.
-
-5. Initialize and start all services:
+   a. For running a node without a validator:
    ```bash
    docker compose --profile init --profile node up -d
+   ```
+
+   b. For running a validator node:
+
+   Edit the `.env` file to set the `USE_VALIDATOR` variable to `true` and set the `DEPOSIT_*` variables to the appropriate values. Then run the following commands:
+
+   ```bash
+   # Generate validator keys (interactive process):
+   docker compose --profile manual run --rm validator-keygen
+
+   # Submit deposits for your validator:
+   docker compose --profile init --profile manual run --rm submit-deposits
+
+   # Start all services including the validator:
+   docker compose --profile init --profile validator up -d
+   ```
+
+4. If the check-config service fails, check its logs:
+   ```bash
+   docker compose logs check-config
    ```
 
 ## Configuration
@@ -70,16 +78,16 @@ After starting your services, you can check the logs to ensure everything is run
 
 2. View logs for specific key services:
    ```bash
-   docker logs -f geth-node      # Execution layer
-   docker logs -f beacon-node    # Consensus layer
-   docker logs -f validator-node # Validator client
+   docker compose --profile=init --profile=node logs -f geth
+   docker compose --profile=init --profile=node logs -f beacon
+   docker compose --profile=init --profile=node logs -f validator
    ```
 
 3. To follow logs in real-time and filter for specific patterns:
    ```bash
-   docker logs -f geth-node 2>&1 | grep 'Looking for peers'
-   docker logs -f beacon-node 2>&1 | grep 'Synced new block'
-   docker logs -f validator-node 2>&1 | grep 'Submitted new'
+   docker compose --profile=init --profile=node logs -f geth 2>&1 | grep 'Looking for peers'
+   docker compose --profile=init --profile=node logs -f beacon 2>&1 | grep 'Synced new block'
+   docker compose --profile=init --profile=node logs -f validator 2>&1 | grep 'Submitted new'
    ```
 
 When reviewing logs, look for:
@@ -123,14 +131,15 @@ The `docker-compose.yml` file provides several additional capabilities for manag
 
 Different profiles are available for various operations:
 
-- `init`: Initialize the environment
+- `init`: Initialize clients, generate secrets
 - `node`: Run the main node services
 - `validator`: Run validator-specific services
 - `manual`: For manual operations like key generation
-- `clean`: Clean up data
+- `delete`: Delete data, e.g. to reset the chain so you can re-sync
 
-You can combine profiles as needed. For example:
+You can combine profiles as needed. Whenever a service depends on another service, you must include the dependent profile.
 
+ For example, to start the node, you must include the `init` and `node` profiles:
 ```bash
 docker compose --profile init --profile node up -d
 ```
@@ -139,7 +148,7 @@ docker compose --profile init --profile node up -d
 
 Generate validator keys (interactive process):
 ```bash
-docker compose --profile manual run --rm validator-keygen
+docker compose --profile init --profile manual run --rm validator-keygen
 ```
 
 Import validator keys:
@@ -147,17 +156,18 @@ Import validator keys:
 docker compose run --rm validator-import
 ```
 
-### Cleaning Up
+### Deleting Data
 
-To clean all data:
+To delete all data/ (does not remove generated secrets/):
+
 ```bash
-docker compose --profile clean run --rm clean-all
+docker compose --profile delete run --rm delete-all
 ```
 
-To clean specific components:
+To delete execution or consensus layer data:
 ```bash
-docker compose --profile clean run --rm clean-geth
-docker compose --profile clean run --rm clean-prysm
+docker compose --profile delete run --rm delete-geth
+docker compose --profile delete run --rm delete-prysm
 ```
 
 ### Configuration Check
@@ -165,7 +175,7 @@ docker compose --profile clean run --rm clean-prysm
 Run a configuration check:
 
 ```bash
-docker compose run --rm check-config
+docker compose --profile=init --profile=node run --rm check-config
 ```
 
 ### Individual Services
@@ -173,9 +183,9 @@ docker compose run --rm check-config
 You can start, stop, or restart individual services:
 
 ```bash
-docker compose up -d geth
-docker compose stop beacon
-docker compose restart validator
+docker compose --profile=init --profile=node up -d geth
+docker compose --profile=init --profile=node stop beacon
+docker compose --profile=init --profile=node restart validator
 ```
 
 ### Viewing Logs
@@ -183,15 +193,23 @@ docker compose restart validator
 View logs for specific services:
 
 ```bash
-docker compose logs geth
-docker compose logs beacon
-docker compose logs validator
+docker compose --profile=init --profile=node logs geth
+docker compose --profile=init --profile=node logs beacon
+docker compose --profile=init --profile=node logs validator
 ```
 
 Add `-f` to follow the logs in real-time:
 
 ```bash
-docker compose logs -f geth
+docker compose --profile=init --profile=node logs -f geth
+```
+
+Use grep to filter for specific events:
+
+```bash
+docker compose --profile=init --profile=node logs -f geth 2>&1 | grep 'Looking for peers'
+docker compose --profile=init --profile=node logs -f beacon 2>&1 | grep 'Synced new block'
+docker compose --profile=init --profile=node logs -f validator 2>&1 | grep 'Submitted new'
 ```
 
 ### Environment Variables
