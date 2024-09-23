@@ -21,12 +21,25 @@ services:
         condition: service_completed_successfully
     profiles: ["init", "execution", "node", "validator", "manual"]
 
+  # delete-all:
+  #   container_name: delete-all
+  #   image: alpine:latest
+  #   command: sh -c "rm -rf /vana/data/* /vana/data/.[!.]* /vana/data/..?*"
+  #   volumes:
+  #     - ./data:/vana/data
+  #   profiles: ["delete"]
+
   delete-all:
     container_name: delete-all
     image: alpine:latest
-    command: sh -c "rm -rf /vana/data/* /vana/data/.[!.]* /vana/data/..?*"
-    volumes:
-      - ./data:/vana/data
+    command: echo "All data deleted"
+    depends_on:
+      delete-geth:
+        condition: service_completed_successfully
+      delete-prysm:
+        condition: service_completed_successfully
+      delete-lighthouse:
+        condition: service_completed_successfully
     profiles: ["delete"]
 
   delete-geth:
