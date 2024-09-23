@@ -14,7 +14,7 @@ echo $PASSWORD > /app/validator_keys/account_password.txt
 chmod 600 /app/validator_keys/account_password.txt
 echo 'Account password saved to secrets/account_password.txt'
 
-echo 'Please enter a wallet password that will be used to secure your validator wallet:'
+echo 'Please enter a wallet password that will be used to secure your validator wallet (if you use Prysm):'
 read -s PASSWORD
 echo $PASSWORD > /app/validator_keys/wallet_password.txt
 chmod 600 /app/validator_keys/wallet_password.txt

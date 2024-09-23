@@ -40,8 +40,16 @@ if [ "$USE_VALIDATOR" = "true" ]; then
     echo "Error: Validator keys not found in /vana/secrets. See README.md for instructions on how to import validator keys."
     exit 1
   fi
-  if [ ! -d /vana/data/validator/wallet ] || [ -z "$(ls -A /vana/data/validator/wallet)" ]; then
-    echo "Error: Validator keys not imported. Wallet directory is empty. See README.md for instructions on how to import validator keys."
+
+  # Check for Prysm wallet
+  if [ -d /vana/data/prysm/wallet ] && [ -z "$(ls -A /vana/data/prysm/wallet)" ]; then
+    echo "Error: Prysm validator keys not imported. Wallet directory is empty. See README.md for instructions on how to import validator keys."
+    exit 1
+  fi
+
+  # Check for Lighthouse validator directory
+  if [ -d /vana/data/lighthouse ] && [ -z "$(ls -A /vana/data/lighthouse/validators)" ]; then
+    echo "Error: Lighthouse validator keys not imported. Validators directory is empty. See README.md for instructions on how to import validator keys."
     exit 1
   fi
 
