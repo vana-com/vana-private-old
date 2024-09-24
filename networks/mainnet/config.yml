@@ -3,7 +3,8 @@ CONFIG_NAME: vana
 
 # Transition
 # ---------------------------------------------------------------
-TERMINAL_TOTAL_DIFFICULTY: 0
+# ~60 minutes from testing
+TERMINAL_TOTAL_DIFFICULTY: 1400
 
 # Genesis
 # ---------------------------------------------------------------
@@ -17,16 +18,16 @@ GENESIS_DELAY: 15
 # Forking
 # ---------------------------------------------------------------
 # Altair
-ALTAIR_FORK_EPOCH: 0
+ALTAIR_FORK_EPOCH: 1
 ALTAIR_FORK_VERSION: 0x20000090
 
 # Bellatrix (Merge)
-# 60 minutes * 60 seconds / 6 seconds per slot / 8 slots per epoch (=75 epochs)
-BELLATRIX_FORK_EPOCH: 75
+BELLATRIX_FORK_EPOCH: 2
 BELLATRIX_FORK_VERSION: 0x20000091
 
 # Capella
-# Bellatrix + (28 minutes * 60 seconds / 6 seconds per slot / 8 slots per epoch (= 35 epochs))
+# Transition: 60 minutes * 60 seconds / 6 seconds per slot / 8 slots per epoch (=75 epochs)
+# Transition + (28 minutes * 60 seconds / 6 seconds per slot / 8 slots per epoch (= 35 epochs))
 CAPELLA_FORK_EPOCH: 110
 CAPELLA_FORK_VERSION: 0x20000092
 

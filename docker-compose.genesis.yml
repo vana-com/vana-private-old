@@ -1,0 +1,285 @@
+services:
+  check-config:
+    container_name: check-config
+    image: alpine:latest
+    command: /vana/container-scripts/check-config.sh
+    volumes:
+      - .:/vana:ro
+    environment:
+      - NETWORK
+      - WITHDRAWAL_ADDRESS
+      - DEPOSIT_RPC_URL
+      - DEPOSIT_CONTRACT_ADDRESS
+      - DEPOSIT_PRIVATE_KEY
+      - USE_VALIDATOR=${USE_VALIDATOR:-false}
+    depends_on:
+      geth-init:
+        condition: service_completed_successfully
+      jwt-gen:
+        condition: service_completed_successfully
+      prysm-keygen:
+        condition: service_completed_successfully
+    profiles: ["init", "node", "validator", "manual"]
+
+  delete-all:
+    container_name: delete-all
+    image: alpine:latest
+    command: sh -c "rm -rf /vana/data/* /vana/data/.[!.]* /vana/data/..?*"
+    volumes:
+      - ./data:/vana/data
+    profiles: ["delete"]
+
+  jwt-gen:
+    container_name: jwt-gen
+    image: alpine:latest
+    command: >
+      sh -c '
+      apk add -q openssl &&
+      openssl rand -hex 32 | tr -d "\n" > /vana/jwt.hex &&
+      chmod 600 /vana/jwt.hex'
+    volumes:
+      - ./data:/vana
+    profiles: ["init"]
+
+  geth-init:
+    container_name: geth-init
+    image: ethereum/client-go:v1.13.15
+    entrypoint: ["/bin/sh", "-c"]
+    command: >
+      "if [ ! -d /vana/execution/geth/chaindata ]; then
+         echo 'Initializing geth...';
+         geth --state.scheme=${GETH_STATE_SCHEME:-path} --datadir=/vana/execution init /vana/execution/genesis.json;
+         echo 'Geth initialized';
+       else
+         echo 'Geth already initialized';
+       fi"
+    volumes:
+      - ./data/execution:/vana/execution
+      - ./networks/${NETWORK}/genesis.json:/vana/execution/genesis.json:ro
+    profiles: ["init"]
+
+  prysm-keygen:
+    container_name: prysm-keygen
+    image: alpine:latest
+    command: >
+      sh -c '
+      apk add -q openssl &&
+      openssl rand -hex 32 | tr -d "\n" > /vana/consensus/prysm-key.hex &&
+      chmod 600 /vana/consensus/prysm-key.hex'
+    volumes:
+      - ./data/consensus:/vana/consensus
+    profiles: ["init"]
+
+  delete-geth:
+    container_name: delete-geth
+    image: alpine:latest
+    command: rm -rf /vana/execution/geth
+    volumes:
+      - ./data/execution:/vana/execution
+    profiles: ["delete"]
+
+  delete-prysm:
+    container_name: delete-prysm
+    image: alpine:latest
+    command: rm -rf /vana/consensus/beacondata /vana/consensus/validatordata
+    volumes:
+      - ./data/consensus:/vana/consensus
+    profiles: ["delete"]
+
+  geth:
+    container_name: geth
+    image: ethereum/client-go:v1.13.15
+    command:
+      - --verbosity=3  # 0=silent, 1=error, 2=warn, 3=info, 4=debug, 5=detail
+      - --nat=extip:${EXTERNAL_IP}
+      - --datadir=/root/.ethereum
+      - --networkid=${CHAIN_ID}
+      - --http
+      - --http.vhosts=*
+      - --http.addr=0.0.0.0
+      - --http.port=${HTTP_PORT:-8545}
+      - --http.api=eth,net,web3,personal,admin
+      - --authrpc.addr=0.0.0.0
+      - --authrpc.port=${AUTHRPC_PORT:-8551}
+      - --authrpc.jwtsecret=/root/.ethereum/jwt.hex
+      - --authrpc.vhosts=*
+      - --syncmode=${GETH_SYNCMODE:-full}
+      - --state.scheme=${GETH_STATE_SCHEME:-path}
+      - --gcmode=${GETH_GCMODE:-full}
+      - --port=${P2P_PORT:-30303}
+      - --bootnodes=${GETH_BOOTNODES}
+    ports:
+      - "${AUTHRPC_PORT:-8551}:${AUTHRPC_PORT:-8551}"
+      - "${HTTP_PORT:-8545}:${HTTP_PORT:-8545}"
+      - "${P2P_PORT:-30303}:${P2P_PORT:-30303}"
+    volumes:
+      - ./data/execution:/root/.ethereum  # Use the default so that the default ipc path works, etc.
+      - ./data/jwt.hex:/root/.ethereum/jwt.hex:ro
+    depends_on:
+      geth-init:
+        condition: service_completed_successfully
+      jwt-gen:
+        condition: service_completed_successfully
+      check-config:
+        condition: service_completed_successfully
+    profiles: ["node", "validator"]
+
+  beacon:
+    container_name: beacon
+    image: gcr.io/prysmaticlabs/prysm/beacon-chain:v3.1.2
+    command:
+      - --accept-terms-of-use
+      - --chain-id=${CHAIN_ID}
+      - --verbosity=info
+      - --min-sync-peers=1
+      - --block-batch-limit=${PRYSM_BLOCK_BATCH_LIMIT:-256}
+      - --block-batch-limit-burst-factor=${PRYSM_BLOCK_BATCH_LIMIT_BURST_FACTOR:-8}
+      - --blob-batch-limit=${PRYSM_BLOB_BATCH_LIMIT:-256}
+      - --blob-batch-limit-burst-factor=${PRYSM_BLOB_BATCH_LIMIT_BURST_FACTOR:-8}
+      - --datadir=/vana/consensus/beacondata
+      - --genesis-state=/vana/consensus/genesis.ssz
+      - --chain-config-file=/vana/consensus/config.yml
+      - --execution-endpoint=http://geth:${AUTHRPC_PORT:-8545}
+      - --jwt-secret=/vana/jwt.hex
+      - --rpc-host=0.0.0.0
+      - --rpc-port=${RPC_PORT:-4000}
+      - --grpc-gateway-host=0.0.0.0
+      - --grpc-gateway-port=${GRPC_GATEWAY_PORT:-3500}
+      - --p2p-host-ip=${EXTERNAL_IP}
+      - --bootstrap-node=${PRYSM_PEER_1}
+      - --peer=${PRYSM_PEER_1}
+      - --peer=${PRYSM_PEER_2}
+      - --peer=${PRYSM_PEER_3}
+      - --peer=${PRYSM_PEER_4}
+      - --peer=${PRYSM_PEER_5}
+      - --p2p-priv-key=/vana/consensus/prysm-key.hex
+      - --suggested-fee-recipient=${WITHDRAWAL_ADDRESS}
+      - --slots-per-archive-point=${PRYSM_SLOTS_PER_ARCHIVE_POINT:-512}
+    depends_on:
+      geth:
+        condition: service_started
+      prysm-keygen:
+        condition: service_completed_successfully
+      jwt-gen:
+        condition: service_completed_successfully
+      check-config:
+        condition: service_completed_successfully
+    ports:
+      - "${RPC_PORT:-4000}:${RPC_PORT:-4000}"
+      - "${GRPC_GATEWAY_PORT:-3500}:${GRPC_GATEWAY_PORT:-3500}"
+      - "${P2P_TCP_PORT:-13000}:${P2P_TCP_PORT:-13000}"
+      - "${P2P_UDP_PORT:-12000}:${P2P_UDP_PORT:-12000}/udp"
+    environment:
+      - WITHDRAWAL_ADDRESS
+      - PRYSM_SLOTS_PER_ARCHIVE_POINT
+      - PRYSM_BLOCK_BATCH_LIMIT
+      - PRYSM_BLOCK_BATCH_LIMIT_BURST_FACTOR
+      - PRYSM_BLOB_BATCH_LIMIT
+      - PRYSM_BLOB_BATCH_LIMIT_BURST_FACTOR
+    volumes:
+      - ./data/jwt.hex:/vana/jwt.hex:ro
+      - ./data/consensus:/vana/consensus
+      - ./networks/${NETWORK}/genesis.ssz:/vana/consensus/genesis.ssz:ro
+      - ./networks/${NETWORK}/config.yml:/vana/consensus/config.yml:ro
+    profiles: ["node", "validator"]
+
+  validator-keygen:
+    container_name: validator-setup
+    build:
+      context: https://github.com/vana-com/staking-deposit-cli.git#v2.3.0-vana
+      dockerfile: Dockerfile
+    entrypoint: "/vana/container-scripts/validator-keygen.sh"
+    volumes:
+      - ./secrets:/app/validator_keys
+      - ./container-scripts:/vana/container-scripts
+    environment:
+      - NUM_VALIDATORS
+      - WITHDRAWAL_ADDRESS
+      - NETWORK
+      - LANGUAGE
+    profiles: ["manual"]
+
+  validator-import:
+    container_name: validator-import
+    image: gcr.io/prysmaticlabs/prysm/validatorv3.1.2
+    command:
+      - accounts
+      - import
+      - --accept-terms-of-use
+      - --keys-dir=/vana/secrets
+      - --wallet-dir=/vana/wallet
+      - --account-password-file=/vana/secrets/account_password.txt
+      - --wallet-password-file=/vana/secrets/wallet_password.txt
+    volumes:
+      - ./secrets:/vana/secrets:ro
+      - ./data/validator/wallet:/vana/wallet
+    # Re-enable if validator-keygen can be automated
+    # depends_on:
+    #   validator-keygen:
+    #     condition: service_completed_successfully
+    profiles: ["validator"]
+
+  validator:
+    container_name: validator
+    image: gcr.io/prysmaticlabs/prysm/validator:v3.1.2
+    command:
+      - --accept-terms-of-use
+      - --verbosity=info
+      - --beacon-rpc-provider=${EXTERNAL_IP}:${RPC_PORT:-4000}
+      - --beacon-rest-api-provider=${EXTERNAL_IP}:${RPC_PORT:-4000}
+      - --datadir=/vana/validator
+      - --wallet-dir=/vana/wallet
+      - --wallet-password-file=/vana/secrets/wallet_password.txt
+      - --chain-config-file=/vana/consensus/config.yml
+      - --suggested-fee-recipient=${WITHDRAWAL_ADDRESS}
+      - --rpc-port=${VALIDATOR_PORT:-7000}
+    depends_on:
+      beacon:
+        condition: service_started
+      validator-import:
+        condition: service_completed_successfully
+      check-config:
+        condition: service_completed_successfully
+    ports:
+      - "${VALIDATOR_PORT:-7000}:${VALIDATOR_PORT:-7000}"
+    environment:
+      - WITHDRAWAL_ADDRESS
+    volumes:
+      - ./data/validator:/vana/validator
+      - ./data/validator/wallet:/vana/wallet
+      - ./secrets:/vana/secrets:ro
+      - ./networks/${NETWORK}/config.yml:/vana/consensus/config.yml:ro
+    profiles: ["validator"]
+
+  submit-deposits:
+    container_name: submit-deposits
+    image: ghcr.io/foundry-rs/foundry:latest
+    volumes:
+      - ./secrets:/validator_keys
+    environment:
+      - DEPOSIT_RPC_URL
+      - DEPOSIT_CONTRACT_ADDRESS
+      - DEPOSIT_PRIVATE_KEY
+    entrypoint: ["sh", "-c"]
+    command:
+      - |
+        apk add --no-cache --quiet jq
+        for file in /validator_keys/deposit_data-*.json; do
+          PUBKEY=$(jq -r '.[0].pubkey' "$$file")
+          WITHDRAWAL_CREDENTIALS=$(jq -r '.[0].withdrawal_credentials' "$$file")
+          SIGNATURE=$(jq -r '.[0].signature' "$$file")
+          DEPOSIT_DATA_ROOT=$(jq -r '.[0].deposit_data_root' "$$file")
+          cast send $$DEPOSIT_CONTRACT_ADDRESS \
+            "deposit(bytes,bytes,bytes,bytes32)" \
+            "0x$$PUBKEY" \
+            "0x$$WITHDRAWAL_CREDENTIALS" \
+            "0x$$SIGNATURE" \
+            "0x$$DEPOSIT_DATA_ROOT" \
+            --value 35000ether \
+            --private-key $$DEPOSIT_PRIVATE_KEY \
+            --rpc-url $$DEPOSIT_RPC_URL
+        done
+    depends_on:
+      check-config:
+        condition: service_completed_successfully
+    profiles: ["manual"]
