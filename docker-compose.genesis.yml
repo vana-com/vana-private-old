@@ -48,7 +48,7 @@ services:
     command: >
       "if [ ! -d /vana/execution/geth/chaindata ]; then
          echo 'Initializing geth...';
-         geth --state.scheme=${GETH_STATE_SCHEME:-path} --datadir=/vana/execution init /vana/execution/genesis.json;
+         geth --datadir=/vana/execution init /vana/execution/genesis.json;
          echo 'Geth initialized';
        else
          echo 'Geth already initialized';
@@ -103,7 +103,7 @@ services:
       - --authrpc.port=${AUTHRPC_PORT:-8551}
       - --authrpc.jwtsecret=/root/.ethereum/jwt.hex
       - --authrpc.vhosts=*
-      - --syncmode=${GETH_SYNCMODE:-full}
+      # - --syncmode=${GETH_SYNCMODE:-full}
       #- --state.scheme=${GETH_STATE_SCHEME:-path}
       - --gcmode=${GETH_GCMODE:-full}
       - --port=${P2P_PORT:-30303}
@@ -112,6 +112,7 @@ services:
       - --miner.etherbase=0x7d8c690a2c30481255c2c96075215025c93592dc
       - --allow-insecure-unlock
       - --password=/root/.ethereum/password.txt
+      - --mine
     ports:
       - "${AUTHRPC_PORT:-8551}:${AUTHRPC_PORT:-8551}"
       - "${HTTP_PORT:-8545}:${HTTP_PORT:-8545}"
