@@ -11,28 +11,16 @@
         "petersburgBlock": 0,
         "istanbulBlock": 0,
         "berlinBlock": 0,
-        "londonBlock": 0,
-        "mergeNetsplitBlock": 0,
-        "terminalTotalDifficulty": 0,
-        "terminalTotalDifficultyPassed": true,
-        "shanghaiTime": 0,
-        "cancunTime": 0,
-        "pragueTime": 40124759369,
-        "depositContractAddress": "0x17BbE91c315Bf14f38F6D35052a827cadfFe184e"
+        "terminalTotalDifficulty": 1200,
+        "clique": {
+            "period": 6,
+            "epoch": 30000
+        }
     },
-    "nonce": "0x0",
-    "timestamp": "0x0",
-    "extraData": "<generate this with extradata.sh>",
-    "gasLimit": "0x1c9c380",
-    "difficulty": "0x1",
-    "mixHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
     "coinbase": "0x0000000000000000000000000000000000000000",
-    "number": "0x0",
-    "gasUsed": "0x0",
-    "parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
-    "baseFeePerGas": null,
-    "excessBlobGas": null,
-    "blobGasUsed": null,
+    "difficulty": "0x1",
+    "gasLimit": "0x1c9c380",
+    "extraData": "0x00000000000000000000000000000000000000000000000000000000000000007d8c690a2c30481255c2c96075215025c93592dc0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
     "alloc": {
         "4e59b44847b379578588920ca78fbf26c0b4956c": {
             "code": "0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe03601600081602082378035828234f58015156039578182fd5b8082525050506014600cf3",

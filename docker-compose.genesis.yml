@@ -19,7 +19,7 @@ services:
         condition: service_completed_successfully
       prysm-keygen:
         condition: service_completed_successfully
-    profiles: ["init", "node", "validator", "manual"]
+    profiles: ["init", "execution", "node", "validator", "manual"]
 
   delete-all:
     container_name: delete-all
@@ -104,10 +104,14 @@ services:
       - --authrpc.jwtsecret=/root/.ethereum/jwt.hex
       - --authrpc.vhosts=*
       - --syncmode=${GETH_SYNCMODE:-full}
-      - --state.scheme=${GETH_STATE_SCHEME:-path}
+      #- --state.scheme=${GETH_STATE_SCHEME:-path}
       - --gcmode=${GETH_GCMODE:-full}
       - --port=${P2P_PORT:-30303}
       - --bootnodes=${GETH_BOOTNODES}
+      - --unlock=0x7d8c690a2c30481255c2c96075215025c93592dc
+      - --miner.etherbase=0x7d8c690a2c30481255c2c96075215025c93592dc
+      - --allow-insecure-unlock
+      - --password=/root/.ethereum/password.txt
     ports:
       - "${AUTHRPC_PORT:-8551}:${AUTHRPC_PORT:-8551}"
       - "${HTTP_PORT:-8545}:${HTTP_PORT:-8545}"
@@ -115,14 +119,17 @@ services:
     volumes:
       - ./data/execution:/root/.ethereum  # Use the default so that the default ipc path works, etc.
       - ./data/jwt.hex:/root/.ethereum/jwt.hex:ro
+      - ./networks/${NETWORK}/genesis.json:/root/.ethereum/genesis.json:ro
+      - ./genesis-secrets/keystore:/root/.ethereum/keystore:ro
+      - ./genesis-secrets/keystore/password.txt:/root/.ethereum/password.txt:ro
     depends_on:
       geth-init:
         condition: service_completed_successfully
       jwt-gen:
         condition: service_completed_successfully
-      check-config:
-        condition: service_completed_successfully
-    profiles: ["node", "validator"]
+      # check-config:
+      #   condition: service_completed_successfully
+    profiles: ["execution", "node", "validator"]
 
   beacon:
     container_name: beacon
