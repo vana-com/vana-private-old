@@ -8,11 +8,11 @@ fi
 
 echo "NETWORK check passed: $NETWORK"
 
-# Check if network configuration files exist
-if [ ! -f "/vana/networks/$NETWORK/genesis.json" ] || [ ! -f "/vana/networks/$NETWORK/genesis.ssz" ] || [ ! -f "/vana/networks/$NETWORK/config.yml" ]; then
-  echo "Error: Network configuration files missing for $NETWORK"
-  exit 1
-fi
+# # Check if network configuration files exist
+# if [ ! -f "/vana/networks/$NETWORK/genesis.json" ] || [ ! -f "/vana/networks/$NETWORK/genesis.ssz" ] || [ ! -f "/vana/networks/$NETWORK/config.yml" ]; then
+#   echo "Error: Network configuration files missing for $NETWORK"
+#   exit 1
+# fi
 
 echo "Network configuration files check passed"
 

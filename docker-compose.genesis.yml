@@ -139,11 +139,11 @@ services:
       - --accept-terms-of-use
       - --chain-id=${CHAIN_ID}
       - --verbosity=info
-      - --min-sync-peers=1
+      - --min-sync-peers=0
       - --block-batch-limit=${PRYSM_BLOCK_BATCH_LIMIT:-256}
       - --block-batch-limit-burst-factor=${PRYSM_BLOCK_BATCH_LIMIT_BURST_FACTOR:-8}
-      - --blob-batch-limit=${PRYSM_BLOB_BATCH_LIMIT:-256}
-      - --blob-batch-limit-burst-factor=${PRYSM_BLOB_BATCH_LIMIT_BURST_FACTOR:-8}
+      # - --blob-batch-limit=${PRYSM_BLOB_BATCH_LIMIT:-256}
+      # - --blob-batch-limit-burst-factor=${PRYSM_BLOB_BATCH_LIMIT_BURST_FACTOR:-8}
       - --datadir=/vana/consensus/beacondata
       - --genesis-state=/vana/consensus/genesis.ssz
       - --chain-config-file=/vana/consensus/config.yml
@@ -186,8 +186,8 @@ services:
       - PRYSM_BLOB_BATCH_LIMIT_BURST_FACTOR
     volumes:
       - ./data/jwt.hex:/vana/jwt.hex:ro
+      - ./networks/${NETWORK}/lighthouse/genesis.ssz:/vana/consensus/genesis.ssz:ro
       - ./data/consensus:/vana/consensus
-      - ./networks/${NETWORK}/genesis.ssz:/vana/consensus/genesis.ssz:ro
       - ./networks/${NETWORK}/config.yml:/vana/consensus/config.yml:ro
     profiles: ["node", "validator"]
 
@@ -209,7 +209,7 @@ services:
 
   validator-import:
     container_name: validator-import
-    image: gcr.io/prysmaticlabs/prysm/validatorv3.1.2
+    image: gcr.io/prysmaticlabs/prysm/validator:v3.1.2
     command:
       - accounts
       - import
@@ -233,8 +233,9 @@ services:
     command:
       - --accept-terms-of-use
       - --verbosity=info
-      - --beacon-rpc-provider=${EXTERNAL_IP}:${RPC_PORT:-4000}
-      - --beacon-rest-api-provider=${EXTERNAL_IP}:${RPC_PORT:-4000}
+      - --beacon-rpc-provider=beacon:${RPC_PORT:-4000}
+      #- --beacon-rpc-provider=${EXTERNAL_IP}:${RPC_PORT:-4000}
+      #- --beacon-rest-api-provider=${EXTERNAL_IP}:${RPC_PORT:-4000}
       - --datadir=/vana/validator
       - --wallet-dir=/vana/wallet
       - --wallet-password-file=/vana/secrets/wallet_password.txt
@@ -262,6 +263,7 @@ services:
   submit-deposits:
     container_name: submit-deposits
     image: ghcr.io/foundry-rs/foundry:latest
+    network_mode: host
     volumes:
       - ./secrets:/validator_keys
     environment:
@@ -285,9 +287,34 @@ services:
             "0x$$DEPOSIT_DATA_ROOT" \
             --value 35000ether \
             --private-key $$DEPOSIT_PRIVATE_KEY \
-            --rpc-url $$DEPOSIT_RPC_URL
+            --rpc-url $$DEPOSIT_RPC_URL \
+            --legacy
         done
     depends_on:
       check-config:
         condition: service_completed_successfully
+    profiles: ["manual"]
+
+  lighthouse-genesis:
+    container_name: lighthouse-genesis
+    image: sigp/lcli:v3.4.0
+    command: >
+      sh -c '
+      if [ ! -f /vana/network/genesis.ssz ]; then
+        lcli eth1-genesis \
+          --spec mainnet \
+          --eth1-endpoints http://geth:${HTTP_PORT:-8545} \
+          --testnet-dir /vana/network \
+          # --genesis-state-output-path /vana/network/genesis.ssz
+        echo "Genesis SSZ file generated"
+      else
+        echo "Genesis SSZ file already exists"
+      fi'
+    volumes:
+      # - ./data/consensus:/vana/consensus
+      - ./networks/${NETWORK}/genesis.json:/vana/network/genesis.json:ro
+      - ./networks/${NETWORK}/lighthouse:/vana/network
+    # depends_on:
+    #   geth:
+    #     condition: service_started
     profiles: ["manual"]
