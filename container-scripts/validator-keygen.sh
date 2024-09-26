@@ -5,7 +5,7 @@ set -e
 python3 -m staking_deposit.deposit --language=${LANGUAGE:-English} new-mnemonic \
   --mnemonic_language=${LANGUAGE:-English} \
   --num_validators=${NUM_VALIDATORS:-1} \
-  --chain=vana_${NETWORK:-mainnet} \
+  --chain=vana \
   --eth1_withdrawal_address=${WITHDRAWAL_ADDRESS}
 
 echo 'Please enter the account password you just entered to secure your validator keys:'

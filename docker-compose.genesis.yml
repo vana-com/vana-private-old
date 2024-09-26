@@ -19,7 +19,8 @@ services:
         condition: service_completed_successfully
       prysm-keygen:
         condition: service_completed_successfully
-    profiles: ["init", "execution", "node", "validator", "manual"]
+    network_mode: host
+    profiles: [ "init", "execution", "node", "validator", "manual" ]
 
   delete-all:
     container_name: delete-all
@@ -27,24 +28,23 @@ services:
     command: sh -c "rm -rf /vana/data/* /vana/data/.[!.]* /vana/data/..?*"
     volumes:
       - ./data:/vana/data
-    profiles: ["delete"]
+    network_mode: host
+    profiles: [ "delete" ]
 
   jwt-gen:
     container_name: jwt-gen
     image: alpine:latest
     command: >
-      sh -c '
-      apk add -q openssl &&
-      openssl rand -hex 32 | tr -d "\n" > /vana/jwt.hex &&
-      chmod 600 /vana/jwt.hex'
+      sh -c 'apk add --update -q openssl && openssl rand -hex 32 | tr -d "\n" > /vana/jwt.hex && chmod 600 /vana/jwt.hex'
     volumes:
       - ./data:/vana
-    profiles: ["init"]
+    network_mode: host
+    profiles: [ "init" ]
 
   geth-init:
     container_name: geth-init
     image: ethereum/client-go:v1.13.15
-    entrypoint: ["/bin/sh", "-c"]
+    entrypoint: [ "/bin/sh", "-c" ]
     command: >
       "if [ ! -d /vana/execution/geth/chaindata ]; then
          echo 'Initializing geth...';
@@ -56,19 +56,17 @@ services:
     volumes:
       - ./data/execution:/vana/execution
       - ./networks/${NETWORK}/genesis.json:/vana/execution/genesis.json:ro
-    profiles: ["init"]
+    profiles: [ "init" ]
 
   prysm-keygen:
     container_name: prysm-keygen
     image: alpine:latest
     command: >
-      sh -c '
-      apk add -q openssl &&
-      openssl rand -hex 32 | tr -d "\n" > /vana/consensus/prysm-key.hex &&
-      chmod 600 /vana/consensus/prysm-key.hex'
+      sh -c ' apk add -q openssl && openssl rand -hex 32 | tr -d "\n" > /vana/consensus/prysm-key.hex && chmod 600 /vana/consensus/prysm-key.hex'
     volumes:
       - ./data/consensus:/vana/consensus
-    profiles: ["init"]
+    network_mode: host
+    profiles: [ "init" ]
 
   delete-geth:
     container_name: delete-geth
@@ -76,7 +74,8 @@ services:
     command: rm -rf /vana/execution/geth
     volumes:
       - ./data/execution:/vana/execution
-    profiles: ["delete"]
+    network_mode: host
+    profiles: [ "delete" ]
 
   delete-prysm:
     container_name: delete-prysm
@@ -84,14 +83,15 @@ services:
     command: rm -rf /vana/consensus/beacondata /vana/consensus/validatordata
     volumes:
       - ./data/consensus:/vana/consensus
-    profiles: ["delete"]
+    network_mode: host
+    profiles: [ "delete" ]
 
   geth:
     container_name: geth
     image: ethereum/client-go:v1.13.15
     command:
-      - --verbosity=3  # 0=silent, 1=error, 2=warn, 3=info, 4=debug, 5=detail
-      - --nat=extip:${EXTERNAL_IP}
+      - --verbosity=3 # 0=silent, 1=error, 2=warn, 3=info, 4=debug, 5=detail
+      # - --nat=extip:${EXTERNAL_IP}
       - --datadir=/root/.ethereum
       - --networkid=${CHAIN_ID}
       - --http
@@ -103,7 +103,7 @@ services:
       - --authrpc.port=${AUTHRPC_PORT:-8551}
       - --authrpc.jwtsecret=/root/.ethereum/jwt.hex
       - --authrpc.vhosts=*
-      # - --syncmode=${GETH_SYNCMODE:-full}
+      #- --syncmode=${GETH_SYNCMODE:-full}
       #- --state.scheme=${GETH_STATE_SCHEME:-path}
       - --gcmode=${GETH_GCMODE:-full}
       - --port=${P2P_PORT:-30303}
@@ -118,7 +118,7 @@ services:
       - "${HTTP_PORT:-8545}:${HTTP_PORT:-8545}"
       - "${P2P_PORT:-30303}:${P2P_PORT:-30303}"
     volumes:
-      - ./data/execution:/root/.ethereum  # Use the default so that the default ipc path works, etc.
+      - ./data/execution:/root/.ethereum # Use the default so that the default ipc path works, etc.
       - ./data/jwt.hex:/root/.ethereum/jwt.hex:ro
       - ./networks/${NETWORK}/genesis.json:/root/.ethereum/genesis.json:ro
       - ./genesis-secrets/keystore:/root/.ethereum/keystore:ro
@@ -130,11 +130,12 @@ services:
         condition: service_completed_successfully
       # check-config:
       #   condition: service_completed_successfully
-    profiles: ["execution", "node", "validator"]
+    profiles: [ "execution", "node", "validator" ]
 
   beacon:
     container_name: beacon
     image: gcr.io/prysmaticlabs/prysm/beacon-chain:v3.1.2
+    network_mode: host
     command:
       - --accept-terms-of-use
       - --chain-id=${CHAIN_ID}
@@ -147,19 +148,19 @@ services:
       - --datadir=/vana/consensus/beacondata
       - --genesis-state=/vana/consensus/genesis.ssz
       - --chain-config-file=/vana/consensus/config.yml
-      - --execution-endpoint=http://geth:${AUTHRPC_PORT:-8545}
+      - --execution-endpoint=http://localhost:${AUTHRPC_PORT:-8545}
       - --jwt-secret=/vana/jwt.hex
       - --rpc-host=0.0.0.0
       - --rpc-port=${RPC_PORT:-4000}
       - --grpc-gateway-host=0.0.0.0
       - --grpc-gateway-port=${GRPC_GATEWAY_PORT:-3500}
       - --p2p-host-ip=${EXTERNAL_IP}
-      - --bootstrap-node=${PRYSM_PEER_1}
-      - --peer=${PRYSM_PEER_1}
-      - --peer=${PRYSM_PEER_2}
-      - --peer=${PRYSM_PEER_3}
-      - --peer=${PRYSM_PEER_4}
-      - --peer=${PRYSM_PEER_5}
+      # - --bootstrap-node=${PRYSM_PEER_1}
+      # - --peer=${PRYSM_PEER_1}
+      # - --peer=${PRYSM_PEER_2}
+      # - --peer=${PRYSM_PEER_3}
+      # - --peer=${PRYSM_PEER_4}
+      # - --peer=${PRYSM_PEER_5}
       - --p2p-priv-key=/vana/consensus/prysm-key.hex
       - --suggested-fee-recipient=${WITHDRAWAL_ADDRESS}
       - --slots-per-archive-point=${PRYSM_SLOTS_PER_ARCHIVE_POINT:-512}
@@ -189,13 +190,14 @@ services:
       - ./networks/${NETWORK}/lighthouse/genesis.ssz:/vana/consensus/genesis.ssz:ro
       - ./data/consensus:/vana/consensus
       - ./networks/${NETWORK}/config.yml:/vana/consensus/config.yml:ro
-    profiles: ["node", "validator"]
+    profiles: [ "node", "validator" ]
 
   validator-keygen:
     container_name: validator-setup
     build:
       context: https://github.com/vana-com/staking-deposit-cli.git#v2.3.0-vana
       dockerfile: Dockerfile
+      network: host
     entrypoint: "/vana/container-scripts/validator-keygen.sh"
     volumes:
       - ./secrets:/app/validator_keys
@@ -205,7 +207,7 @@ services:
       - WITHDRAWAL_ADDRESS
       - NETWORK
       - LANGUAGE
-    profiles: ["manual"]
+    profiles: [ "manual" ]
 
   validator-import:
     container_name: validator-import
@@ -225,15 +227,16 @@ services:
     # depends_on:
     #   validator-keygen:
     #     condition: service_completed_successfully
-    profiles: ["validator"]
+    profiles: [ "validator" ]
 
   validator:
     container_name: validator
     image: gcr.io/prysmaticlabs/prysm/validator:v3.1.2
+    network_mode: host
     command:
       - --accept-terms-of-use
       - --verbosity=info
-      - --beacon-rpc-provider=beacon:${RPC_PORT:-4000}
+      - --beacon-rpc-provider=localhost:${RPC_PORT:-4000}
       #- --beacon-rpc-provider=${EXTERNAL_IP}:${RPC_PORT:-4000}
       #- --beacon-rest-api-provider=${EXTERNAL_IP}:${RPC_PORT:-4000}
       - --datadir=/vana/validator
@@ -258,7 +261,7 @@ services:
       - ./data/validator/wallet:/vana/wallet
       - ./secrets:/vana/secrets:ro
       - ./networks/${NETWORK}/config.yml:/vana/consensus/config.yml:ro
-    profiles: ["validator"]
+    profiles: [ "validator" ]
 
   submit-deposits:
     container_name: submit-deposits
@@ -270,7 +273,7 @@ services:
       - DEPOSIT_RPC_URL
       - DEPOSIT_CONTRACT_ADDRESS
       - DEPOSIT_PRIVATE_KEY
-    entrypoint: ["sh", "-c"]
+    entrypoint: [ "sh", "-c" ]
     command:
       - |
         apk add --no-cache --quiet jq
@@ -293,17 +296,17 @@ services:
     depends_on:
       check-config:
         condition: service_completed_successfully
-    profiles: ["manual"]
+    profiles: [ "manual" ]
 
   lighthouse-genesis:
     container_name: lighthouse-genesis
     image: sigp/lcli:v3.4.0
+    network_mode: host
     command: >
-      sh -c '
-      if [ ! -f /vana/network/genesis.ssz ]; then
+      sh -c ' if [ ! -f /vana/network/genesis.ssz ]; then
         lcli eth1-genesis \
           --spec mainnet \
-          --eth1-endpoints http://geth:${HTTP_PORT:-8545} \
+          --eth1-endpoints http://localhost:${HTTP_PORT:-8545} \
           --testnet-dir /vana/network \
           # --genesis-state-output-path /vana/network/genesis.ssz
         echo "Genesis SSZ file generated"
@@ -317,4 +320,4 @@ services:
     # depends_on:
     #   geth:
     #     condition: service_started
-    profiles: ["manual"]
+    profiles: [ "manual" ]
