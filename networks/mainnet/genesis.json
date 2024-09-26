@@ -14,9 +14,9 @@
         "arrowGlacierBlock": 0,
         "grayGlacierBlock": 0,
         "chainId": 616161,
-        "terminalTotalDifficulty": 280,
+        "terminalTotalDifficulty": 100,
         "clique": {
-            "period": 3,
+            "period": 8,
             "epoch": 30000
         }
     },
