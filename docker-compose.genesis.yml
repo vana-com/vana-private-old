@@ -46,7 +46,7 @@ services:
     image: ethereum/client-go:${GETH_VERSION:-latest}
     entrypoint: [ "/bin/sh", "-c" ]
     command: >
-      "if [ ! -d /vana/execution/geth/chaindata ]; then
+      "if [ \"$$REINIT_GETH\" = \"true\" ] || [ ! -d /vana/execution/geth/chaindata ]; then
          echo 'Initializing geth...';
          geth --datadir=/vana/execution init /vana/execution/genesis.json;
          echo 'Geth initialized';
@@ -56,6 +56,8 @@ services:
     volumes:
       - ./data/execution:/vana/execution
       - ./networks/${NETWORK}/${CHAIN_MODE:-poa}/genesis.json:/vana/execution/genesis.json:ro
+    environment:
+      - REINIT_GETH
     profiles: [ "init" ]
 
   prysm-keygen:
