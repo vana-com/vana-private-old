@@ -304,7 +304,10 @@ services:
 
   lighthouse-genesis:
     container_name: lighthouse-genesis
-    image: sigp/lcli:v3.4.0
+    # image: sigp/lcli:v3.4.0
+    build:  # Use Vana's version which supports MAX_EFFECTIVE_BALANCE and therefore EJECTION_BALANCE > 16
+      context: https://github.com/vana-com/lighthouse.git#v3.4.0-vana
+      dockerfile: Dockerfile
     network_mode: host
     command: >
       sh -c ' if [ ! -f /vana/network/genesis.ssz ]; then
