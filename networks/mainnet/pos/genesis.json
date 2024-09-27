@@ -15,11 +15,11 @@
         "londonBlock": 0,
         "arrowGlacierBlock": 0,
         "grayGlacierBlock": 0,
-        "terminalTotalDifficulty": 100,
-        "clique": {
-            "period": 6,
-            "epoch": 30000
-        }
+        "terminalTotalDifficulty": 70,
+        "mergeNetsplitBlock": 0,
+		"shanghaiTime": 1727455082,
+		"cancunTime": 1727455082,
+		"terminalTotalDifficultyPassed": true
     },
     "coinbase": "0x0000000000000000000000000000000000000000",
     "difficulty": "1",
