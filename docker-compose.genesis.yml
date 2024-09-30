@@ -330,8 +330,7 @@ services:
         lcli eth1-genesis \
           --spec mainnet \
           --eth1-endpoints http://localhost:${HTTP_PORT:-8545} \
-          --testnet-dir /vana/network \
-          # --genesis-state-output-path /vana/network/genesis.ssz
+          --testnet-dir /vana/network
         echo "Genesis SSZ file generated"
       else
         echo "Genesis SSZ file already exists"
