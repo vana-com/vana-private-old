@@ -34,16 +34,17 @@ if [ "$USE_VALIDATOR" = "true" ]; then
       exit 1
   fi
 
-
   # Check if validator keys exist and have been imported
   if [ ! -d /vana/secrets ] || [ -z "$(ls -A /vana/secrets)" ]; then
     echo "Error: Validator keys not found in /vana/secrets. See README.md for instructions on how to import validator keys."
     exit 1
   fi
-  if [ ! -d /vana/data/validator/wallet ] || [ -z "$(ls -A /vana/data/validator/wallet)" ]; then
-    echo "Error: Validator keys not imported. Wallet directory is empty. See README.md for instructions on how to import validator keys."
-    exit 1
-  fi
+
+  # TODO: Only re-enable this if it can be bypassed in submit-deposits
+  # if [ ! -d /vana/data/validator/wallet ] || [ -z "$(ls -A /vana/data/validator/wallet)" ]; then
+  #   echo "Error: Validator keys not imported. Wallet directory is empty. See README.md for instructions on how to import validator keys."
+  #   exit 1
+  # fi
 
   echo "Validator keys and wallet check passed"
 
