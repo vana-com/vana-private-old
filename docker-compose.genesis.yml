@@ -35,7 +35,15 @@ services:
     container_name: jwt-gen
     image: alpine:latest
     command: >
-      sh -c 'apk add --update -q openssl && openssl rand -hex 32 | tr -d "\n" > /vana/jwt.hex && chmod 600 /vana/jwt.hex'
+      sh -c '
+      if [ ! -f /vana/jwt.hex ]; then
+        apk add --update -q openssl &&
+        openssl rand -hex 32 | tr -d "\n" > /vana/jwt.hex &&
+        chmod 600 /vana/jwt.hex
+        echo "JWT file generated"
+      else
+        echo "JWT file already exists"
+      fi'
     volumes:
       - ./data:/vana
     network_mode: host
@@ -64,7 +72,15 @@ services:
     container_name: prysm-keygen
     image: alpine:latest
     command: >
-      sh -c ' apk add -q openssl && openssl rand -hex 32 | tr -d "\n" > /vana/consensus/prysm-key.hex && chmod 600 /vana/consensus/prysm-key.hex'
+      sh -c '
+      if [ ! -f /vana/consensus/prysm-key.hex ]; then
+        apk add -q openssl &&
+        openssl rand -hex 32 | tr -d "\n" > /vana/consensus/prysm-key.hex &&
+        chmod 600 /vana/consensus/prysm-key.hex
+        echo "Prysm key generated"
+      else
+        echo "Prysm key already exists"
+      fi'
     volumes:
       - ./data/consensus:/vana/consensus
     network_mode: host
