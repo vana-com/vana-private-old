@@ -42,7 +42,7 @@ This guide will help you set up a validator node for the Vana Proof-of-Stake (Po
 
    ```bash
    # Generate validator keys (interactive process):
-   docker compose --profile manual run --rm validator-keygen
+   docker compose --profile init --profile manual run --rm validator-keygen
 
    # Submit deposits for your validator:
    docker compose --profile init --profile manual run --rm submit-deposits

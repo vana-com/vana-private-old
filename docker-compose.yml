@@ -217,7 +217,7 @@ services:
     # depends_on:
     #   validator-keygen:
     #     condition: service_completed_successfully
-    profiles: ["validator"]
+    profiles: ["manual", "validator"]
 
   validator:
     container_name: validator
@@ -281,5 +281,7 @@ services:
         done
     depends_on:
       check-config:
+        condition: service_completed_successfully
+      validator-import:
         condition: service_completed_successfully
     profiles: ["manual"]
