@@ -21,14 +21,6 @@ services:
         condition: service_completed_successfully
     profiles: ["init", "execution", "node", "validator", "manual"]
 
-  # delete-all:
-  #   container_name: delete-all
-  #   image: alpine:latest
-  #   command: sh -c "rm -rf /vana/data/* /vana/data/.[!.]* /vana/data/..?*"
-  #   volumes:
-  #     - ./data:/vana/data
-  #   profiles: ["delete"]
-
   delete-all:
     container_name: delete-all
     image: alpine:latest
@@ -72,11 +64,17 @@ services:
     image: alpine:latest
     command: >
       sh -c '
-      apk add -q openssl &&
-      openssl rand -hex 32 | tr -d "\n" > /vana/jwt.hex &&
-      chmod 600 /vana/jwt.hex'
+      if [ ! -f /vana/jwt.hex ]; then
+        apk add --update -q openssl &&
+        openssl rand -hex 32 | tr -d "\n" > /vana/jwt.hex &&
+        chmod 600 /vana/jwt.hex
+        echo "JWT file generated"
+      else
+        echo "JWT file already exists"
+      fi'
     volumes:
       - ./data:/vana
+    network_mode: host
     profiles: ["init"]
 
   geth-init:
@@ -101,11 +99,17 @@ services:
     image: alpine:latest
     command: >
       sh -c '
-      apk add -q openssl &&
-      openssl rand -hex 32 | tr -d "\n" > /vana/prysm/prysm-key.hex &&
-      chmod 600 /vana/prysm/prysm-key.hex'
+      if [ ! -f /vana/consensus/prysm-key.hex ]; then
+        apk add -q openssl &&
+        openssl rand -hex 32 | tr -d "\n" > /vana/prysm/prysm-key.hex &&
+        chmod 600 /vana/prysm/prysm-key.hex
+        echo "Prysm key generated"
+      else
+        echo "Prysm key already exists"
+      fi'
     volumes:
       - ./data/prysm:/vana/prysm
+    network_mode: host
     profiles: ["init"]
 
   validator-keygen:
@@ -181,6 +185,7 @@ services:
       - --gcmode=${GETH_GCMODE:-full}
       - --port=${P2P_PORT:-30303}
       - --bootnodes=${GETH_BOOTNODES}
+      - --rpc.txfeecap=0
     ports:
       - "${AUTHRPC_PORT:-8551}:${AUTHRPC_PORT:-8551}"
       - "${HTTP_PORT:-8545}:${HTTP_PORT:-8545}"
@@ -195,6 +200,11 @@ services:
         condition: service_completed_successfully
       check-config:
         condition: service_completed_successfully
+    # healthcheck:
+    #   test: ["CMD-SHELL", "geth attach --exec eth.syncing"]
+    #   interval: 10s
+    #   timeout: 5s
+    #   retries: 5
     profiles: ["execution", "node", "validator"]
 
   ### Prysm
@@ -214,7 +224,7 @@ services:
       - --datadir=/vana/prysm/beacondata
       - --genesis-state=/vana/prysm/genesis.ssz
       - --chain-config-file=/vana/prysm/config.yml
-      - --execution-endpoint=http://geth:${AUTHRPC_PORT:-8545}
+      - --execution-endpoint=http://geth:${AUTHRPC_PORT:-8551}
       - --jwt-secret=/vana/jwt.hex
       - --rpc-host=0.0.0.0
       - --rpc-port=${RPC_PORT:-4000}
@@ -257,6 +267,7 @@ services:
       - ./networks/${NETWORK}/genesis.ssz:/vana/prysm/genesis.ssz:ro
       - ./networks/${NETWORK}/config.yml:/vana/prysm/config.yml:ro
     profiles: ["prysm", "validator"]
+    # profiles: ["prysm", "node", "validator"]
 
   prysm-import-keys:
     container_name: prysm-import-keys
@@ -318,11 +329,15 @@ services:
     command:
       - lighthouse
       - beacon_node
+      - --debug-level=debug
       - --testnet-dir=/vana/network
-      # - --network=${NETWORK}
       - --datadir=/vana/lighthouse
       - --execution-endpoint=http://geth:${AUTHRPC_PORT:-8551}
       - --execution-jwt=/vana/jwt.hex
+      - --eth1
+      # - --eth1-endpoints=http://geth:8551
+      - --staking
+      - --subscribe-all-subnets
       - --http
       - --http-address=0.0.0.0
       - --http-port=${RPC_PORT:-4000}
@@ -331,10 +346,15 @@ services:
       - --suggested-fee-recipient=${WITHDRAWAL_ADDRESS}
       # - --checkpoint-sync-url=${CHECKPOINT_SYNC_URL:-}
       - --boot-nodes=${LIGHTHOUSE_BOOT_NODES:-}
+      - --trusted-peers=16Uiu2HAm6iJbnxCzgpnC5dcT9RyEYck6JM9rNYV2cmgGrKCuSsfV,16Uiu2HAmLoEGD4c9ftbGr1C68sHP881mpzZYqL1sEtvSqAxnNQuf,16Uiu2HAmQJJnDdNmxFGj6gzqFigNR5A2gUAemDTMHbE93zeVme4i,16Uiu2HAm87aa9nAsz7epvibx8nDjpXbXVgGZF9Mbx8TTpFVqnWV7,16Uiu2HAmB3UZZL6MZBrgEYGKNakt2ZXXD5NDp5TqupAcJcK66LHx
+      - --libp2p-addresses=${LIGHTHOUSE_LIBP2P_ADDRESSES:-}
       # - --target-peers=${TARGET_PEERS:-50}
       # - --execution-timeout-multiplier=${EXECUTION_TIMEOUT_MULTIPLIER:-1}
       - --disable-deposit-contract-sync
       - --allow-insecure-genesis-sync
+      - --target-peers=1
+      - --gui
+      - --disable-packet-filter
     depends_on:
       geth:
         condition: service_started
@@ -360,6 +380,12 @@ services:
       - ./networks/${NETWORK}/genesis.ssz:/vana/network/genesis.ssz:ro
       - ./networks/${NETWORK}/lighthouse/config.yml:/vana/network/config.yaml:ro
       - ./networks/${NETWORK}/lighthouse/deposit_contract_block.txt:/vana/network/deposit_contract_block.txt:ro
+    # healthcheck:
+    #   test: ["CMD", "lighthouse", "--network=${NETWORK}", "health"]
+    #   interval: 10s
+    #   timeout: 5s
+    #   retries: 5
+    # profiles: ["lighthouse", "validator"]
     profiles: ["lighthouse", "node", "validator"]
 
   # lighthouse-validator-manager:
@@ -389,7 +415,6 @@ services:
     image: sigp/lighthouse:latest
     command:
       - lighthouse
-      # - --network=${NETWORK}
       - account
       - validator
       - import
@@ -410,12 +435,15 @@ services:
     image: sigp/lighthouse:latest
     command:
       - lighthouse
-      # - --network=${NETWORK}
       - validator_client
       - --testnet-dir=/vana/network
       - --beacon-nodes=http://lighthouse-beacon:${RPC_PORT:-4000}
       - --datadir=/vana/validator/lighthouse
       - --suggested-fee-recipient=${WITHDRAWAL_ADDRESS}
+      - --http
+      - --http-address=0.0.0.0
+      - --http-port=5062
+      - --unencrypted-http-transport
     depends_on:
       lighthouse-beacon:
         condition: service_started
@@ -430,4 +458,23 @@ services:
       - ./networks/${NETWORK}/genesis.ssz:/vana/network/genesis.ssz:ro
       - ./networks/${NETWORK}/lighthouse/config.yml:/vana/network/config.yaml:ro
       - ./networks/${NETWORK}/lighthouse/deposit_contract_block.txt:/vana/network/deposit_contract_block.txt:ro
+    ports:
+      - "5062:5062"
     profiles: ["lighthouse", "validator"]
+    # profiles: ["lighthouse", "node", "validator"]
+
+  siren:
+    container_name: siren
+    image: sigp/siren:latest
+    ports:
+      - "4443:443"
+    environment:
+      - BEACON_URL=http://lighthouse-beacon:4000
+      - VALIDATOR_URL=http://lighthouse-validator:5062
+      - API_TOKEN=${API_TOKEN:-hQLsBylvAAOSWjGI1CqojmsDby9gMIzVT} # from data/lighthouse/validators/api-token.txt
+      - SESSION_PASSWORD=${SESSION_PASSWORD:-minnow}
+    depends_on:
+      - lighthouse-beacon
+      - lighthouse-validator
+    profiles: ["lighthouse", "validator"]
+    # profiles: ["lighthouse", "node", "validator"]
