@@ -155,11 +155,15 @@ services:
   beacon:
     container_name: beacon
     image: gcr.io/prysmaticlabs/prysm/beacon-chain:${PRYSM_VERSION:-latest}
+    # build:
+    #   context: $HOME/repo/prysm
+    #   dockerfile: Dockerfile
+    # image: beacon-chain:v4.0.0
     network_mode: host
     command:
       - --accept-terms-of-use
       - --chain-id=${CHAIN_ID}
-      - --verbosity=info
+      - --verbosity=debug
       - --min-sync-peers=0
       - --block-batch-limit=${PRYSM_BLOCK_BATCH_LIMIT:-256}
       - --block-batch-limit-burst-factor=${PRYSM_BLOCK_BATCH_LIMIT_BURST_FACTOR:-8}
@@ -185,8 +189,8 @@ services:
       - --suggested-fee-recipient=${WITHDRAWAL_ADDRESS}
       - --slots-per-archive-point=${PRYSM_SLOTS_PER_ARCHIVE_POINT:-512}
     depends_on:
-      geth:
-        condition: service_started
+      # geth:
+      #   condition: service_started
       prysm-keygen:
         condition: service_completed_successfully
       jwt-gen:
@@ -313,9 +317,9 @@ services:
             --rpc-url $$DEPOSIT_RPC_URL \
             --legacy
         done
-    depends_on:
-      check-config:
-        condition: service_completed_successfully
+    # depends_on:
+    #   check-config:
+    #     condition: service_completed_successfully
     profiles: [ "manual" ]
 
   lighthouse-genesis:
@@ -326,7 +330,7 @@ services:
       dockerfile: Dockerfile
     network_mode: host
     command: >
-      sh -c ' if [ ! -f /vana/network/genesis.ssz ]; then
+      sh -c 'if [ ! -f /vana/network/genesis.ssz ]; then
         lcli eth1-genesis \
           --spec mainnet \
           --eth1-endpoints http://localhost:${HTTP_PORT:-8545} \
