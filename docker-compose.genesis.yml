@@ -143,7 +143,7 @@ services:
       - ./data/jwt.hex:/root/.ethereum/jwt.hex:ro
       - ./networks/${NETWORK}/${CHAIN_MODE:-pos}/genesis.json:/root/.ethereum/genesis.json:ro
       - ./genesis-secrets/keystore:/root/.ethereum/keystore:ro
-      - ./genesis-secrets/keystore/password.txt:/root/.ethereum/password.txt:ro
+      - ./genesis-secrets/keystore/account_password.txt:/root/.ethereum/password.txt:ro
     depends_on:
       geth-init:
         condition: service_completed_successfully
