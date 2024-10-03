@@ -117,6 +117,7 @@ services:
       - --http.addr=0.0.0.0
       - --http.port=${HTTP_PORT:-8545}
       - --http.api=eth,net,web3,personal,admin
+      - --rpc.txfeecap=0
       - --authrpc.addr=0.0.0.0
       - --authrpc.port=${AUTHRPC_PORT:-8551}
       - --authrpc.jwtsecret=/root/.ethereum/jwt.hex
@@ -126,8 +127,8 @@ services:
       - --gcmode=${GETH_GCMODE:-full}
       - --port=${P2P_PORT:-30303}
       - --bootnodes=${GETH_BOOTNODES}
-      - --unlock=0x7d8c690a2c30481255c2c96075215025c93592dc
-      - --miner.etherbase=0x7d8c690a2c30481255c2c96075215025c93592dc
+      - --unlock=${GETH_UNLOCK}
+      - --miner.etherbase=${GETH_UNLOCK}
       - --allow-insecure-unlock
       - --password=/root/.ethereum/password.txt
       - --mine
