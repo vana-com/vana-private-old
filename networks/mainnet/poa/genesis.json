@@ -15,7 +15,7 @@
         "londonBlock": 0,
         "arrowGlacierBlock": 0,
         "grayGlacierBlock": 0,
-        "terminalTotalDifficulty": 100,
+        "terminalTotalDifficulty": 700,
         "clique": {
             "period": 6,
             "epoch": 30000
