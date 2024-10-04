@@ -109,7 +109,7 @@ services:
     image: ethereum/client-go:${GETH_VERSION:-latest}
     command:
       - --verbosity=3 # 0=silent, 1=error, 2=warn, 3=info, 4=debug, 5=detail
-      # - --nat=extip:${EXTERNAL_IP}
+      - --nat=extip:${EXTERNAL_IP}
       - --datadir=/root/.ethereum
       - --networkid=${CHAIN_ID}
       - --http
