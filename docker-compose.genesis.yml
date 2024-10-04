@@ -123,14 +123,16 @@ services:
       - --authrpc.vhosts=*
       #- --syncmode=${GETH_SYNCMODE:-full}
       #- --state.scheme=${GETH_STATE_SCHEME:-path}
+      - --syncmode=full
       - --gcmode=${GETH_GCMODE:-full}
       - --port=${P2P_PORT:-30303}
       - --bootnodes=${GETH_BOOTNODES}
       - --unlock=0x7d8c690a2c30481255c2c96075215025c93592dc
-      - --miner.etherbase=0x7d8c690a2c30481255c2c96075215025c93592dc
       - --allow-insecure-unlock
       - --password=/root/.ethereum/password.txt
+      - --miner.etherbase=0x7d8c690a2c30481255c2c96075215025c93592dc
       - --mine
+      - --miner.threads=1
     environment:
       - CHAIN_MODE
     ports:

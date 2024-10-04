@@ -12,7 +12,7 @@ CONFIG_NAME: vana
 # Transition
 # ---------------------------------------------------------------
 # ~60 minutes from testing
-TERMINAL_TOTAL_DIFFICULTY: 100
+TERMINAL_TOTAL_DIFFICULTY: 15000000
 
 # Genesis
 # ---------------------------------------------------------------
