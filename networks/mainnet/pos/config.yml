@@ -94,7 +94,6 @@ CHURN_LIMIT_QUOTIENT: 42
 # 17500 * 10**9 (= 17,500,000,000,000) Gwei
 EJECTION_BALANCE: 17500000000000
 
-
 # Deposit contract (PoS)
 # ---------------------------------------------------------------
 DEPOSIT_CHAIN_ID: 1480
@@ -117,12 +116,6 @@ EFFECTIVE_BALANCE_INCREMENT: 1000000000000
 # ---------------------------------------------------------------
 BASE_REWARD_FACTOR: 21
 
-# 2**24 (= 16,777,216) initial reference from Ethereum...
-# 2**24 / (35,000/32) (~= 15,340) to adjust for 32 ETH -> 35,000 VANA...
-# 2**24 / (35,000/32) / 8 (~= 1,920) to increase the penalty by 8x
-INACTIVITY_PENALTY_QUOTIENT_BELLATRIX: 1920
-
 # MAXIMUM_EFFECTIVE_BALANCE / MIN_SLASHING_PENALTY_QUOTIENT
 # 35,000 / 35 = 1000 VANA token slashing penalty
 MIN_SLASHING_PENALTY_QUOTIENT_BELLATRIX: 35
-
