@@ -162,7 +162,7 @@ services:
     #   context: $HOME/repo/prysm
     #   dockerfile: Dockerfile
     # image: beacon-chain:v4.0.0
-    network_mode: host
+    # network_mode: host
     command:
       - --accept-terms-of-use
       - --chain-id=${CHAIN_ID}
@@ -175,7 +175,7 @@ services:
       - --datadir=/vana/consensus/beacondata
       - --genesis-state=/vana/consensus/genesis.ssz
       - --chain-config-file=/vana/consensus/config.yml
-      - --execution-endpoint=http://localhost:${AUTHRPC_PORT:-8551}
+      - --execution-endpoint=http://${EXTERNAL_IP}:${AUTHRPC_PORT:-8551}
       - --jwt-secret=/vana/jwt.hex
       - --rpc-host=0.0.0.0
       - --rpc-port=${RPC_PORT:-4000}
@@ -259,11 +259,11 @@ services:
   validator:
     container_name: validator
     image: gcr.io/prysmaticlabs/prysm/validator:${PRYSM_VERSION:-latest}
-    network_mode: host
+    #network_mode: host
     command:
       - --accept-terms-of-use
       - --verbosity=info
-      - --beacon-rpc-provider=localhost:${RPC_PORT:-4000}
+      - --beacon-rpc-provider=${EXTERNAL_IP}:${RPC_PORT:-4000}
       #- --beacon-rpc-provider=${EXTERNAL_IP}:${RPC_PORT:-4000}
       #- --beacon-rest-api-provider=${EXTERNAL_IP}:${RPC_PORT:-4000}
       - --datadir=/vana/validator
