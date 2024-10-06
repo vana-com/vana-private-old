@@ -15,7 +15,7 @@
         "londonBlock": 0,
         "arrowGlacierBlock": 0,
         "grayGlacierBlock": 0,
-        "terminalTotalDifficulty": 15000000,
+        "terminalTotalDifficulty": 30000000,
         "mergeNetsplitBlock": 0,
 		"terminalTotalDifficultyPassed": true,
         "shanghaiTime": 1735689600,
