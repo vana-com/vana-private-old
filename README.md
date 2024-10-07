@@ -23,7 +23,11 @@ This guide will help you set up a validator node for the Vana Proof-of-Stake (Po
 
 2. Configure your environment:
    ```bash
-   cp .env.example .env
+   # For Moksha testnet
+   cp .env.moksha.example .env
+   # OR for Mainnet
+   cp .env.mainnet.example .env
+
    # Edit .env with your preferred text editor
    ```
 
@@ -31,22 +35,46 @@ This guide will help you set up a validator node for the Vana Proof-of-Stake (Po
 
    a. For running a node without a validator:
 
-   Edit the `.env` file to set the `USE_VALIDATOR` variable to `false`. It is recommended to use `GETH_SYNCMODE=snap` and to update the Prysm variables to match, per the comments in the `.env.example` file. Then run the following commands:
+   Edit the `.env` file to set `USE_VALIDATOR=false`. Use `GETH_SYNCMODE=snap` and update Prysm variables accordingly. Then run:
    ```bash
    docker compose --profile init --profile node up -d
    ```
 
    b. For running a validator node:
 
-   Edit the `.env` file to set the `USE_VALIDATOR` variable to `true` and set the `DEPOSIT_*` variables to the appropriate values. Then run the following commands:
+   Edit the `.env` file to set `USE_VALIDATOR=true` and set the `DEPOSIT_*` variables appropriately.
 
+   If you already have validator keys:
+   - Place your keystore files in the `./secrets` directory
+   - Create a `wallet_password.txt` file in the `./secrets` directory with your wallet password
+   - Create an `account_password.txt` file in the `./secrets` directory with your account password
+
+   Then run:
+   ```bash
+   # Import existing validator keys:
+   docker compose --profile init --profile manual run --rm validator-import
+
+   # Start all services including the validator:
+   docker compose --profile init --profile validator up -d
+   ```
+
+   If you need to generate new validator keys:
    ```bash
    # Generate validator keys (interactive process):
    docker compose --profile init --profile manual run --rm validator-keygen
 
+   # Import the generated validator keys:
+   docker compose --profile init --profile manual run --rm validator-import
+   ```
+
+   If you have not submitted your deposits yet:
+   ```bash
    # Submit deposits for your validator:
    docker compose --profile init --profile manual run --rm submit-deposits
+   ```
 
+   When you have submitted your deposits, you can start your validator:
+   ```bash
    # Start all services including the validator:
    docker compose --profile init --profile validator up -d
    ```
