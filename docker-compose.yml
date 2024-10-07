@@ -163,6 +163,7 @@ services:
       - --peer=${PRYSM_PEER_3}
       - --peer=${PRYSM_PEER_4}
       - --peer=${PRYSM_PEER_5}
+      # Add more peers as needed, make sure to add them to .env
       - --p2p-priv-key=/vana/consensus/prysm-key.hex
       - --suggested-fee-recipient=${WITHDRAWAL_ADDRESS}
       - --slots-per-archive-point=${PRYSM_SLOTS_PER_ARCHIVE_POINT:-512}
