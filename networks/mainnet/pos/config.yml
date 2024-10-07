@@ -117,9 +117,8 @@ EFFECTIVE_BALANCE_INCREMENT: 1000000000000
 BASE_REWARD_FACTOR: 21
 
 # 2**24 (= 16,777,216) initial reference from Ethereum...
-# 2**24 / (35,000/32) (~= 15,340) to adjust for 32 ETH -> 35,000 VANA...
-# 2**24 / (35,000/32) * 8 (~= 122,720) to decrease the penalty by 8x to account for epochs being 8x faster
-INACTIVITY_PENALTY_QUOTIENT_BELLATRIX: 122720
+# 2**24 * 8 (~= 134,217,728) to decrease the penalty by 8x to account for epochs being 8x faster
+INACTIVITY_PENALTY_QUOTIENT_BELLATRIX: 134217728
 
 # MAXIMUM_EFFECTIVE_BALANCE / MIN_SLASHING_PENALTY_QUOTIENT
 # 35,000 / 35 = 1000 VANA token slashing penalty
