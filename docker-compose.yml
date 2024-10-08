@@ -80,6 +80,21 @@ services:
       - ./data/consensus:/vana/consensus
     profiles: ["init"]
 
+  bootnode-init:
+    container_name: bootnode-init
+    image: ethereum/client-go:${GETH_ALLTOOLS_VERSION:-alltools-latest}
+    command: >
+      sh -c '
+      if [ ! -f /vana/execution/bootnode.key ]; then
+        bootnode -genkey /vana/execution/bootnode.key &&
+        echo "Bootnode key generated"
+      else
+        echo "Bootnode key already exists"
+      fi'
+    volumes:
+      - ./data/execution:/vana/execution
+    profiles: ["init"]
+
   delete-geth:
     container_name: delete-geth
     image: alpine:latest
@@ -119,6 +134,7 @@ services:
       - --gcmode=${GETH_GCMODE:-full}
       - --port=${P2P_PORT:-30303}
       - --bootnodes=${GETH_BOOTNODES}
+      - --nodekey=/root/.ethereum/bootnode.key
     ports:
       - "${AUTHRPC_PORT:-8551}:${AUTHRPC_PORT:-8551}"
       - "${HTTP_PORT:-8545}:${HTTP_PORT:-8545}"
@@ -132,6 +148,8 @@ services:
       jwt-gen:
         condition: service_completed_successfully
       check-config:
+        condition: service_completed_successfully
+      bootnode-init:
         condition: service_completed_successfully
     profiles: ["node", "validator"]
 
@@ -164,6 +182,7 @@ services:
       - --peer=${PRYSM_PEER_4}
       - --peer=${PRYSM_PEER_5}
       # Add more peers as needed, make sure to add them to .env
+      - --p2p-static-id
       - --p2p-priv-key=/vana/consensus/prysm-key.hex
       - --suggested-fee-recipient=${WITHDRAWAL_ADDRESS}
       - --slots-per-archive-point=${PRYSM_SLOTS_PER_ARCHIVE_POINT:-512}
