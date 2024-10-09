@@ -1,10 +1,11 @@
 #!/bin/sh
 
 # Check NETWORK
-if [ "$NETWORK" != "moksha" ] && [ "$NETWORK" != "mainnet" ]; then
-  echo "Error: Invalid NETWORK '$NETWORK', must be either 'moksha' or 'mainnet'"
+if [ "$NETWORK" != "maya" ] &&[ "$NETWORK" != "moksha" ] && [ "$NETWORK" != "mainnet" ]; then
+  echo "Error: Invalid NETWORK '$NETWORK', must be 'maya, 'moksha', or 'mainnet'"
   exit 1
 fi
+
 
 echo "NETWORK check passed: $NETWORK"
 
