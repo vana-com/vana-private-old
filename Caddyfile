@@ -1,0 +1,3 @@
+rpc.islander.vana.org {
+    reverse_proxy geth:8545
+}
