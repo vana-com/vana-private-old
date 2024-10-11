@@ -1,8 +1,7 @@
 services:
   check-config:
-    container_name: check-config
     image: alpine:latest
-    command: /vana/container-scripts/check-config.sh
+    container_name: check-config
     volumes:
       - .:/vana:ro
       # Uncomment this when we have a better way to manage keys apart from secrets/.
@@ -13,6 +12,7 @@ services:
       - DEPOSIT_RPC_URL
       - DEPOSIT_CONTRACT_ADDRESS
       - USE_VALIDATOR=${USE_VALIDATOR:-false}
+    command: /vana/container-scripts/check-config.sh
     depends_on:
       geth-init:
         condition: service_completed_successfully
@@ -27,16 +27,18 @@ services:
       - wallet_password
 
   delete-all:
-    container_name: delete-all
     image: alpine:latest
-    command: sh -c "rm -rf /vana/data/* /vana/data/.[!.]* /vana/data/..?*"
+    container_name: delete-all
     volumes:
       - ./data:/vana/data
+    command: sh -c "rm -rf /vana/data/* /vana/data/.[!.]* /vana/data/..?*"
     profiles: ["delete"]
 
   jwt-gen:
-    container_name: jwt-gen
     image: alpine:latest
+    container_name: jwt-gen
+    volumes:
+      - ./data:/vana
     command: >
       sh -c '
       if [ ! -f /vana/jwt.hex ]; then
@@ -47,13 +49,14 @@ services:
       else
         echo "JWT file already exists"
       fi'
-    volumes:
-      - ./data:/vana
     profiles: ["init"]
 
   geth-init:
-    container_name: geth-init
     image: ethereum/client-go:${GETH_VERSION:-latest}
+    container_name: geth-init
+    volumes:
+      - ./data/execution:/vana/execution
+      - ./networks/${NETWORK}/genesis.json:/vana/execution/genesis.json:ro
     entrypoint: ["/bin/sh", "-c"]
     command: >
       "if [ ! -d /vana/execution/geth/chaindata ]; then
@@ -63,14 +66,13 @@ services:
        else
          echo 'Geth already initialized';
        fi"
-    volumes:
-      - ./data/execution:/vana/execution
-      - ./networks/${NETWORK}/genesis.json:/vana/execution/genesis.json:ro
     profiles: ["init"]
 
   prysm-keygen:
-    container_name: prysm-keygen
     image: alpine:latest
+    container_name: prysm-keygen
+    volumes:
+      - ./data/consensus:/vana/consensus
     command: >
       sh -c '
       if [ ! -f /vana/consensus/prysm-key.hex ]; then
@@ -81,13 +83,13 @@ services:
       else
         echo "Prysm key already exists"
       fi'
-    volumes:
-      - ./data/consensus:/vana/consensus
     profiles: ["init"]
 
   bootnode-init:
-    container_name: bootnode-init
     image: ethereum/client-go:${GETH_ALLTOOLS_VERSION:-alltools-latest}
+    container_name: bootnode-init
+    volumes:
+      - ./data/execution:/vana/execution
     command: >
       sh -c '
       if [ ! -f /vana/execution/bootnode.key ]; then
@@ -97,29 +99,38 @@ services:
       else
         echo "Bootnode key already exists"
       fi'
-    volumes:
-      - ./data/execution:/vana/execution
     profiles: ["init"]
 
   delete-geth:
-    container_name: delete-geth
     image: alpine:latest
-    command: rm -rf /vana/execution/geth
+    container_name: delete-geth
     volumes:
       - ./data/execution:/vana/execution
+    command: rm -rf /vana/execution/geth
     profiles: ["delete"]
 
   delete-prysm:
-    container_name: delete-prysm
     image: alpine:latest
-    command: rm -rf /vana/consensus/beacondata /vana/consensus/validatordata
+    container_name: delete-prysm
     volumes:
       - ./data/consensus:/vana/consensus
+    command: rm -rf /vana/consensus/beacondata /vana/consensus/validatordata
     profiles: ["delete"]
 
   geth:
-    container_name: geth
     image: ethereum/client-go:${GETH_VERSION:-latest}
+    container_name: geth
+    volumes:
+      - ./data/execution:/root/.ethereum  # Use the default so that the default ipc path works, etc.
+      - ./data/jwt.hex:/root/.ethereum/jwt.hex:ro
+    ports:
+      # Do not expose the auth RPC port used by the beacon node
+      #- "${AUTHRPC_PORT:-8551}:${AUTHRPC_PORT:-8551}"
+      - "${P2P_PORT:-30303}:${P2P_PORT:-30303}"
+      # Expose HTTP RPC on port 8545 to the host only
+      - "127.0.0.1:${HTTP_PORT:-8545}:${HTTP_PORT:-8545}"
+      # Or, if you want to make your API public, use this:
+      # - "${HTTP_PORT:-8545}:${HTTP_PORT:-8545}"
     command:
       - --verbosity=3  # 0=silent, 1=error, 2=warn, 3=info, 4=debug, 5=detail
       - --networkid=${CHAIN_ID}
@@ -146,17 +157,6 @@ services:
       - --authrpc.jwtsecret=/root/.ethereum/jwt.hex
       - --authrpc.vhosts=*
       - --nodekey=/root/.ethereum/bootnode.key
-    ports:
-      # Do not expose the auth RPC port used by the beacon node
-      #- "${AUTHRPC_PORT:-8551}:${AUTHRPC_PORT:-8551}"
-      - "${P2P_PORT:-30303}:${P2P_PORT:-30303}"
-      # Expose HTTP RPC on port 8545 to the host only
-      - "127.0.0.1:${HTTP_PORT:-8545}:${HTTP_PORT:-8545}"
-      # Or, if you want to make your API public, use this:
-      # - "${HTTP_PORT:-8545}:${HTTP_PORT:-8545}"
-    volumes:
-      - ./data/execution:/root/.ethereum  # Use the default so that the default ipc path works, etc.
-      - ./data/jwt.hex:/root/.ethereum/jwt.hex:ro
     depends_on:
       geth-init:
         condition: service_completed_successfully
@@ -169,8 +169,29 @@ services:
     profiles: ["node", "validator"]
 
   beacon:
-    container_name: beacon
     image: gcr.io/prysmaticlabs/prysm/beacon-chain:${PRYSM_VERSION:-latest}
+    container_name: beacon
+    volumes:
+      - ./data/jwt.hex:/vana/jwt.hex:ro
+      - ./data/consensus:/vana/consensus
+      - ./networks/${NETWORK}/genesis.ssz:/vana/consensus/genesis.ssz:ro
+      - ./networks/${NETWORK}/config.yml:/vana/consensus/config.yml:ro
+    ports:
+      # Do not expose the RPC port used by the validator
+      # - "${RPC_PORT:-4000}:${RPC_PORT:-4000}"
+      # Expose the gRPC gateway on port 3500 to the host only
+      - "127.0.0.1:${GRPC_GATEWAY_PORT:-3500}:${GRPC_GATEWAY_PORT:-3500}"
+      # Or, if you want to make your API public, use this:
+      # - "${GRPC_GATEWAY_PORT:-3500}:${GRPC_GATEWAY_PORT:-3500}"
+      - "${P2P_TCP_PORT:-13000}:${P2P_TCP_PORT:-13000}"
+      - "${P2P_UDP_PORT:-12000}:${P2P_UDP_PORT:-12000}/udp"
+    environment:
+      - WITHDRAWAL_ADDRESS
+      - PRYSM_SLOTS_PER_ARCHIVE_POINT
+      - PRYSM_BLOCK_BATCH_LIMIT
+      - PRYSM_BLOCK_BATCH_LIMIT_BURST_FACTOR
+      - PRYSM_BLOB_BATCH_LIMIT
+      - PRYSM_BLOB_BATCH_LIMIT_BURST_FACTOR
     command:
       - --accept-terms-of-use
       - --chain-id=${CHAIN_ID}
@@ -210,35 +231,13 @@ services:
         condition: service_completed_successfully
       check-config:
         condition: service_completed_successfully
-    ports:
-      # Do not expose the RPC port used by the validator
-      # - "${RPC_PORT:-4000}:${RPC_PORT:-4000}"
-      # Expose the gRPC gateway on port 3500 to the host only
-      - "127.0.0.1:${GRPC_GATEWAY_PORT:-3500}:${GRPC_GATEWAY_PORT:-3500}"
-      # Or, if you want to make your API public, use this:
-      # - "${GRPC_GATEWAY_PORT:-3500}:${GRPC_GATEWAY_PORT:-3500}"
-      - "${P2P_TCP_PORT:-13000}:${P2P_TCP_PORT:-13000}"
-      - "${P2P_UDP_PORT:-12000}:${P2P_UDP_PORT:-12000}/udp"
-    environment:
-      - WITHDRAWAL_ADDRESS
-      - PRYSM_SLOTS_PER_ARCHIVE_POINT
-      - PRYSM_BLOCK_BATCH_LIMIT
-      - PRYSM_BLOCK_BATCH_LIMIT_BURST_FACTOR
-      - PRYSM_BLOB_BATCH_LIMIT
-      - PRYSM_BLOB_BATCH_LIMIT_BURST_FACTOR
-    volumes:
-      - ./data/jwt.hex:/vana/jwt.hex:ro
-      - ./data/consensus:/vana/consensus
-      - ./networks/${NETWORK}/genesis.ssz:/vana/consensus/genesis.ssz:ro
-      - ./networks/${NETWORK}/config.yml:/vana/consensus/config.yml:ro
     profiles: ["node", "validator"]
 
   validator-keygen:
-    container_name: validator-setup
     build:
       context: https://github.com/vana-com/staking-deposit-cli.git#vana-main
       dockerfile: Dockerfile
-    entrypoint: "/vana/container-scripts/validator-keygen.sh"
+    container_name: validator-setup
     volumes:
       - ./secrets:/app/validator_keys
       - ./container-scripts:/vana/container-scripts
@@ -247,11 +246,17 @@ services:
       - WITHDRAWAL_ADDRESS
       - NETWORK
       - LANGUAGE
+    entrypoint: "/vana/container-scripts/validator-keygen.sh"
     profiles: ["manual"]
 
   validator-import:
-    container_name: validator-import
     image: gcr.io/prysmaticlabs/prysm/validator:${PRYSM_VERSION:-latest}
+    container_name: validator-import
+    volumes:
+      # For now, continue to mount this for --keys-dir.
+      # In the future it would be better to manage keys and deposit data apart from secrets/.
+      - ./secrets:/vana/secrets:ro
+      - ./data/validator/wallet:/vana/wallet
     command:
       - accounts
       - import
@@ -260,11 +265,6 @@ services:
       - --wallet-dir=/vana/wallet
       - --account-password-file=/run/secrets/account_password
       - --wallet-password-file=/run/secrets/wallet_password
-    volumes:
-      # For now, continue to mount this for --keys-dir.
-      # In the future it would be better to manage keys and deposit data apart from secrets/.
-      - ./secrets:/vana/secrets:ro
-      - ./data/validator/wallet:/vana/wallet
     secrets:
       - account_password
       - wallet_password
@@ -275,8 +275,14 @@ services:
     profiles: ["manual", "validator"]
 
   validator:
-    container_name: validator
     image: gcr.io/prysmaticlabs/prysm/validator:${PRYSM_VERSION:-latest}
+    container_name: validator
+    volumes:
+      - ./data/validator:/vana/validator
+      - ./data/validator/wallet:/vana/wallet
+      - ./networks/${NETWORK}/config.yml:/vana/consensus/config.yml:ro
+    environment:
+      - WITHDRAWAL_ADDRESS
     command:
       - --accept-terms-of-use
       - --verbosity=info
@@ -296,19 +302,13 @@ services:
         condition: service_completed_successfully
       check-config:
         condition: service_completed_successfully
-    environment:
-      - WITHDRAWAL_ADDRESS
-    volumes:
-      - ./data/validator:/vana/validator
-      - ./data/validator/wallet:/vana/wallet
-      - ./networks/${NETWORK}/config.yml:/vana/consensus/config.yml:ro
     secrets:
       - wallet_password
     profiles: ["validator"]
 
   submit-deposits:
-    container_name: submit-deposits
     image: ghcr.io/foundry-rs/foundry:latest
+    container_name: submit-deposits
     volumes:
       - ./secrets:/validator_keys:ro
     environment:
