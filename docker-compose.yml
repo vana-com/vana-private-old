@@ -1,39 +1,5 @@
 services:
-  check-config:
-    image: alpine:latest
-    container_name: check-config
-    volumes:
-      - .:/vana:ro
-      # Uncomment this when we have a better way to manage keys apart from secrets/.
-      # - /vana/secrets  # Create an empty volume, effectively hiding ./secrets
-    environment:
-      - NETWORK
-      - WITHDRAWAL_ADDRESS
-      - DEPOSIT_RPC_URL
-      - DEPOSIT_CONTRACT_ADDRESS
-      - USE_VALIDATOR=${USE_VALIDATOR:-false}
-    command: /vana/container-scripts/check-config.sh
-    depends_on:
-      geth-init:
-        condition: service_completed_successfully
-      jwt-gen:
-        condition: service_completed_successfully
-      prysm-keygen:
-        condition: service_completed_successfully
-    profiles: ["init", "node", "validator", "manual"]
-    secrets:
-      - account_password
-      - deposit_private_key
-      - wallet_password
-
-  delete-all:
-    image: alpine:latest
-    container_name: delete-all
-    volumes:
-      - ./data:/vana/data
-    command: sh -c "rm -rf /vana/data/* /vana/data/.[!.]* /vana/data/..?*"
-    profiles: ["delete"]
-
+  # Initialization services
   jwt-gen:
     image: alpine:latest
     container_name: jwt-gen
@@ -101,22 +67,34 @@ services:
       fi'
     profiles: ["init"]
 
-  delete-geth:
+  check-config:
     image: alpine:latest
-    container_name: delete-geth
+    container_name: check-config
     volumes:
-      - ./data/execution:/vana/execution
-    command: rm -rf /vana/execution/geth
-    profiles: ["delete"]
+      - .:/vana:ro
+      # Uncomment this when we have a better way to manage keys apart from secrets/.
+      # - /vana/secrets  # Create an empty volume, effectively hiding ./secrets
+    environment:
+      - NETWORK
+      - WITHDRAWAL_ADDRESS
+      - DEPOSIT_RPC_URL
+      - DEPOSIT_CONTRACT_ADDRESS
+      - USE_VALIDATOR=${USE_VALIDATOR:-false}
+    command: /vana/container-scripts/check-config.sh
+    depends_on:
+      geth-init:
+        condition: service_completed_successfully
+      jwt-gen:
+        condition: service_completed_successfully
+      prysm-keygen:
+        condition: service_completed_successfully
+    profiles: ["init", "node", "validator", "manual"]
+    secrets:
+      - account_password
+      - deposit_private_key
+      - wallet_password
 
-  delete-prysm:
-    image: alpine:latest
-    container_name: delete-prysm
-    volumes:
-      - ./data/consensus:/vana/consensus
-    command: rm -rf /vana/consensus/beacondata /vana/consensus/validatordata
-    profiles: ["delete"]
-
+  # Main node services
   geth:
     image: ethereum/client-go:${GETH_VERSION:-latest}
     container_name: geth
@@ -233,6 +211,7 @@ services:
         condition: service_completed_successfully
     profiles: ["node", "validator"]
 
+  # Validator services
   validator-keygen:
     build:
       context: https://github.com/vana-com/staking-deposit-cli.git#vana-main
@@ -341,6 +320,31 @@ services:
     profiles: ["manual"]
     secrets:
       - deposit_private_key
+
+  # Cleanup services
+  delete-geth:
+    image: alpine:latest
+    container_name: delete-geth
+    volumes:
+      - ./data/execution:/vana/execution
+    command: rm -rf /vana/execution/geth
+    profiles: ["delete"]
+
+  delete-prysm:
+    image: alpine:latest
+    container_name: delete-prysm
+    volumes:
+      - ./data/consensus:/vana/consensus
+    command: rm -rf /vana/consensus/beacondata /vana/consensus/validatordata
+    profiles: ["delete"]
+
+  delete-all:
+    image: alpine:latest
+    container_name: delete-all
+    volumes:
+      - ./data:/vana/data
+    command: sh -c "rm -rf /vana/data/* /vana/data/.[!.]* /vana/data/..?*"
+    profiles: ["delete"]
 
 secrets:
   deposit_private_key:
