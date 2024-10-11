@@ -5,12 +5,13 @@ services:
     command: /vana/container-scripts/check-config.sh
     volumes:
       - .:/vana:ro
+      # Uncomment this when we have a better way to manage keys apart from secrets/.
+      # - /vana/secrets  # Create an empty volume, effectively hiding ./secrets
     environment:
       - NETWORK
       - WITHDRAWAL_ADDRESS
       - DEPOSIT_RPC_URL
       - DEPOSIT_CONTRACT_ADDRESS
-      - DEPOSIT_PRIVATE_KEY
       - USE_VALIDATOR=${USE_VALIDATOR:-false}
     depends_on:
       geth-init:
@@ -20,6 +21,10 @@ services:
       prysm-keygen:
         condition: service_completed_successfully
     profiles: ["init", "node", "validator", "manual"]
+    secrets:
+      - account_password
+      - deposit_private_key
+      - wallet_password
 
   delete-all:
     container_name: delete-all
@@ -87,6 +92,7 @@ services:
       sh -c '
       if [ ! -f /vana/execution/bootnode.key ]; then
         bootnode -genkey /vana/execution/bootnode.key &&
+        chmod 600 /vana/execution/bootnode.key
         echo "Bootnode key generated"
       else
         echo "Bootnode key already exists"
@@ -116,29 +122,38 @@ services:
     image: ethereum/client-go:${GETH_VERSION:-latest}
     command:
       - --verbosity=3  # 0=silent, 1=error, 2=warn, 3=info, 4=debug, 5=detail
-      - --nat=extip:${EXTERNAL_IP}
-      - --datadir=/root/.ethereum
       - --networkid=${CHAIN_ID}
+      - --datadir=/root/.ethereum
+      - --nat=extip:${EXTERNAL_IP}
+      - --port=${P2P_PORT:-30303}
+      - --syncmode=${GETH_SYNCMODE:-full}
+      - --state.scheme=${GETH_STATE_SCHEME:-path}
+      - --gcmode=${GETH_GCMODE:-full}
+      - --bootnodes=${GETH_BOOTNODES}
+      # Enable HTTP RPC, available at http://host:${HTTP_PORT:-8545}
+      # If you want to limit access to certain IPs, use --http.corsdomain="..." and --http.vhosts="..."
       - --http
-      - --http.vhosts=*
+      - --http.vhosts=${GETH_HTTP_VHOSTS:-*}
       - --http.addr=0.0.0.0
       - --http.port=${HTTP_PORT:-8545}
-      - --http.api=eth,net,web3,personal,admin
-      - --rpc.txfeecap=0
+      - --http.api=eth,net,web3
+      # Only enable personal and admin APIs if you know what you're doing
+      # - --http.api=eth,net,web3,personal,admin
+      - --rpc.txfeecap=${GETH_RPC_TXFEECAP:-1000}
+      # Enable the auth RPC API for the beacon node
       - --authrpc.addr=0.0.0.0
       - --authrpc.port=${AUTHRPC_PORT:-8551}
       - --authrpc.jwtsecret=/root/.ethereum/jwt.hex
       - --authrpc.vhosts=*
-      - --syncmode=${GETH_SYNCMODE:-full}
-      - --state.scheme=${GETH_STATE_SCHEME:-path}
-      - --gcmode=${GETH_GCMODE:-full}
-      - --port=${P2P_PORT:-30303}
-      - --bootnodes=${GETH_BOOTNODES}
       - --nodekey=/root/.ethereum/bootnode.key
     ports:
-      - "${AUTHRPC_PORT:-8551}:${AUTHRPC_PORT:-8551}"
-      - "${HTTP_PORT:-8545}:${HTTP_PORT:-8545}"
+      # Do not expose the auth RPC port used by the beacon node
+      #- "${AUTHRPC_PORT:-8551}:${AUTHRPC_PORT:-8551}"
       - "${P2P_PORT:-30303}:${P2P_PORT:-30303}"
+      # Expose HTTP RPC on port 8545 to the host only
+      - "127.0.0.1:${HTTP_PORT:-8545}:${HTTP_PORT:-8545}"
+      # Or, if you want to make your API public, use this:
+      # - "${HTTP_PORT:-8545}:${HTTP_PORT:-8545}"
     volumes:
       - ./data/execution:/root/.ethereum  # Use the default so that the default ipc path works, etc.
       - ./data/jwt.hex:/root/.ethereum/jwt.hex:ro
@@ -196,8 +211,12 @@ services:
       check-config:
         condition: service_completed_successfully
     ports:
-      - "${RPC_PORT:-4000}:${RPC_PORT:-4000}"
-      - "${GRPC_GATEWAY_PORT:-3500}:${GRPC_GATEWAY_PORT:-3500}"
+      # Do not expose the RPC port used by the validator
+      # - "${RPC_PORT:-4000}:${RPC_PORT:-4000}"
+      # Expose the gRPC gateway on port 3500 to the host only
+      - "127.0.0.1:${GRPC_GATEWAY_PORT:-3500}:${GRPC_GATEWAY_PORT:-3500}"
+      # Or, if you want to make your API public, use this:
+      # - "${GRPC_GATEWAY_PORT:-3500}:${GRPC_GATEWAY_PORT:-3500}"
       - "${P2P_TCP_PORT:-13000}:${P2P_TCP_PORT:-13000}"
       - "${P2P_UDP_PORT:-12000}:${P2P_UDP_PORT:-12000}/udp"
     environment:
@@ -239,11 +258,16 @@ services:
       - --accept-terms-of-use
       - --keys-dir=/vana/secrets
       - --wallet-dir=/vana/wallet
-      - --account-password-file=/vana/secrets/account_password.txt
-      - --wallet-password-file=/vana/secrets/wallet_password.txt
+      - --account-password-file=/run/secrets/account_password
+      - --wallet-password-file=/run/secrets/wallet_password
     volumes:
+      # For now, continue to mount this for --keys-dir.
+      # In the future it would be better to manage keys and deposit data apart from secrets/.
       - ./secrets:/vana/secrets:ro
       - ./data/validator/wallet:/vana/wallet
+    secrets:
+      - account_password
+      - wallet_password
     # Re-enable if validator-keygen can be automated
     # depends_on:
     #   validator-keygen:
@@ -256,14 +280,15 @@ services:
     command:
       - --accept-terms-of-use
       - --verbosity=info
-      - --beacon-rpc-provider=${EXTERNAL_IP}:${RPC_PORT:-4000}
+      # TODO: In prior testing, beacon didn't seem to work when ${EXTERNAL_IP} did. Check if this is still the case.
+      - --beacon-rpc-provider=beacon:${RPC_PORT:-4000}
+      #- --beacon-rpc-provider=${EXTERNAL_IP}:${RPC_PORT:-4000}
       - --beacon-rest-api-provider=${EXTERNAL_IP}:${RPC_PORT:-4000}
       - --datadir=/vana/validator
       - --wallet-dir=/vana/wallet
-      - --wallet-password-file=/vana/secrets/wallet_password.txt
+      - --wallet-password-file=/run/secrets/wallet_password
       - --chain-config-file=/vana/consensus/config.yml
       - --suggested-fee-recipient=${WITHDRAWAL_ADDRESS}
-      - --rpc-port=${VALIDATOR_PORT:-7000}
     depends_on:
       beacon:
         condition: service_started
@@ -271,26 +296,24 @@ services:
         condition: service_completed_successfully
       check-config:
         condition: service_completed_successfully
-    ports:
-      - "${VALIDATOR_PORT:-7000}:${VALIDATOR_PORT:-7000}"
     environment:
       - WITHDRAWAL_ADDRESS
     volumes:
       - ./data/validator:/vana/validator
       - ./data/validator/wallet:/vana/wallet
-      - ./secrets:/vana/secrets:ro
       - ./networks/${NETWORK}/config.yml:/vana/consensus/config.yml:ro
+    secrets:
+      - wallet_password
     profiles: ["validator"]
 
   submit-deposits:
     container_name: submit-deposits
     image: ghcr.io/foundry-rs/foundry:latest
     volumes:
-      - ./secrets:/validator_keys
+      - ./secrets:/validator_keys:ro
     environment:
       - DEPOSIT_RPC_URL
       - DEPOSIT_CONTRACT_ADDRESS
-      - DEPOSIT_PRIVATE_KEY
     entrypoint: ["sh", "-c"]
     command:
       - |
@@ -307,7 +330,7 @@ services:
             "0x$$SIGNATURE" \
             "0x$$DEPOSIT_DATA_ROOT" \
             --value 35000ether \
-            --private-key $$DEPOSIT_PRIVATE_KEY \
+            --private-key-file /run/secrets/deposit_private_key \
             --rpc-url $$DEPOSIT_RPC_URL
         done
     depends_on:
@@ -316,3 +339,13 @@ services:
       validator-import:
         condition: service_completed_successfully
     profiles: ["manual"]
+    secrets:
+      - deposit_private_key
+
+secrets:
+  deposit_private_key:
+    file: ./secrets/deposit_private_key.txt
+  wallet_password:
+    file: ./secrets/wallet_password.txt
+  account_password:
+    file: ./secrets/account_password.txt

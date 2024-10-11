@@ -255,15 +255,20 @@ After generating validator keys and before starting your validator, you need to 
 1. Ensure you have the following environment variables set in your `.env` file:
    - `DEPOSIT_RPC_URL`: The RPC URL for the network on which you're submitting deposits
    - `DEPOSIT_CONTRACT_ADDRESS`: The address of the deposit contract
-   - `DEPOSIT_PRIVATE_KEY`: The private key of the account funding the deposits
 
-2. Run the deposit submission process:
+2. Create a file named `deposit_private_key.txt` in the `./secrets` directory containing the private key of the account funding the deposits:
    ```bash
-   docker compose --profile deposit run --rm submit-deposits
+   echo "your_private_key_here" > ./secrets/deposit_private_key.txt
+   ```
+   Replace `your_private_key_here` with the actual private key.
+
+3. Run the deposit submission process:
+   ```bash
+   docker compose --profile manual run --rm submit-deposits
    ```
 
    This command will iterate through all generated validator keys and submit the required deposits.
 
-3. Wait for the transactions to be confirmed on the network before proceeding to start your validator.
+4. Wait for the transactions to be confirmed on the network before proceeding to start your validator.
 
 For more detailed information on Docker Compose commands and options, refer to the [official Docker Compose documentation](https://docs.docker.com/compose/reference/).
