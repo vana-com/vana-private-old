@@ -31,6 +31,27 @@ This guide will help you set up a validator node for the Vana Proof-of-Stake (Po
    # Edit .env with your preferred text editor
    ```
 
+> **Checkpoint Sync Recommended**
+>
+> To avoid very long sync times, it's highly recommended to use checkpoint sync.
+> In your `.env` file, set the following variables:
+>
+> ```
+> TRUSTED_BEACON_NODE_URL=http://archive.vana.org:3500  # Use appropriate URL for your network
+> WEAK_SUBJECTIVITY_CHECKPOINT=0x0000000000000000000000000000000000000000000000000000000000000000:0  # Replace with actual checkpoint
+> ```
+> WEAK_SUBJECTIVITY_CHECKPOINT is a block root:epoch number of the checkpoint that you want to sync to.
+>
+> Then, in the `docker-compose.yml` file, uncomment these lines in the `beacon` service:
+>
+> ```yaml
+> - --weak-subjectivity-checkpoint=${WEAK_SUBJECTIVITY_CHECKPOINT}
+> - --checkpoint-sync-url=${TRUSTED_BEACON_NODE_URL}  # not strictly necessary, but recommended for safety
+> - --genesis-beacon-api-url=${TRUSTED_BEACON_NODE_URL}  # not strictly necessary, genesis state is provided by this repo
+> ```
+>
+> This can significantly reduce the time it takes for your node to sync with the network.
+
 3. Choose your setup:
 
    a. For running a node without a validator:
@@ -255,15 +276,20 @@ After generating validator keys and before starting your validator, you need to 
 1. Ensure you have the following environment variables set in your `.env` file:
    - `DEPOSIT_RPC_URL`: The RPC URL for the network on which you're submitting deposits
    - `DEPOSIT_CONTRACT_ADDRESS`: The address of the deposit contract
-   - `DEPOSIT_PRIVATE_KEY`: The private key of the account funding the deposits
 
-2. Run the deposit submission process:
+2. Create a file named `deposit_private_key.txt` in the `./secrets` directory containing the private key of the account funding the deposits:
    ```bash
-   docker compose --profile deposit run --rm submit-deposits
+   echo "your_private_key_here" > ./secrets/deposit_private_key.txt
+   ```
+   Replace `your_private_key_here` with the actual private key.
+
+3. Run the deposit submission process:
+   ```bash
+   docker compose --profile manual run --rm submit-deposits
    ```
 
    This command will iterate through all generated validator keys and submit the required deposits.
 
-3. Wait for the transactions to be confirmed on the network before proceeding to start your validator.
+4. Wait for the transactions to be confirmed on the network before proceeding to start your validator.
 
 For more detailed information on Docker Compose commands and options, refer to the [official Docker Compose documentation](https://docs.docker.com/compose/reference/).
