@@ -31,6 +31,27 @@ This guide will help you set up a validator node for the Vana Proof-of-Stake (Po
    # Edit .env with your preferred text editor
    ```
 
+> **Checkpoint Sync Recommended**
+>
+> To avoid very long sync times, it's highly recommended to use checkpoint sync.
+> In your `.env` file, set the following variables:
+>
+> ```
+> TRUSTED_BEACON_NODE_URL=http://archive.vana.org:3500  # Use appropriate URL for your network
+> WEAK_SUBJECTIVITY_CHECKPOINT=0x0000000000000000000000000000000000000000000000000000000000000000:0  # Replace with actual checkpoint
+> ```
+> WEAK_SUBJECTIVITY_CHECKPOINT is a block root:epoch number of the checkpoint that you want to sync to.
+>
+> Then, in the `docker-compose.yml` file, uncomment these lines in the `beacon` service:
+>
+> ```yaml
+> - --weak-subjectivity-checkpoint=${WEAK_SUBJECTIVITY_CHECKPOINT}
+> - --checkpoint-sync-url=${TRUSTED_BEACON_NODE_URL}  # not strictly necessary, but recommended for safety
+> - --genesis-beacon-api-url=${TRUSTED_BEACON_NODE_URL}  # not strictly necessary, genesis state is provided by this repo
+> ```
+>
+> This can significantly reduce the time it takes for your node to sync with the network.
+
 3. Choose your setup:
 
    a. For running a node without a validator:

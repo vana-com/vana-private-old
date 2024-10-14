@@ -171,6 +171,10 @@ services:
       - PRYSM_BLOB_BATCH_LIMIT
       - PRYSM_BLOB_BATCH_LIMIT_BURST_FACTOR
     command:
+      # TODO: To use checkpoint sync, uncomment these lines and ensure that TRUSTED_BEACON_NODE_URL and WEAK_SUBJECTIVITY_CHECKPOINT are set in your .env file
+      #- --weak-subjectivity-checkpoint=${WEAK_SUBJECTIVITY_CHECKPOINT}
+      #- --checkpoint-sync-url=${TRUSTED_BEACON_NODE_URL}
+      #- --genesis-beacon-api-url=${TRUSTED_BEACON_NODE_URL}  # not strictly necessary, genesis state is provided by this repo
       - --accept-terms-of-use
       - --chain-id=${CHAIN_ID}
       - --verbosity=info
@@ -195,6 +199,11 @@ services:
       - --peer=${PRYSM_PEER_3}
       - --peer=${PRYSM_PEER_4}
       - --peer=${PRYSM_PEER_5}
+      - --peer=${PRYSM_PEER_6}
+      - --peer=${PRYSM_PEER_7}
+      - --peer=${PRYSM_PEER_8}
+      - --peer=${PRYSM_PEER_9}
+      - --peer=${PRYSM_PEER_10}
       # Add more peers as needed, make sure to add them to .env
       - --p2p-static-id
       - --p2p-priv-key=/vana/consensus/prysm-key.hex
