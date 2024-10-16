@@ -350,31 +350,45 @@ services:
       - deposit_private_key
 
   # Cleanup services
-  delete-geth:
-    <<: *default-logging
-    image: alpine:latest
-    container_name: delete-geth
-    volumes:
-      - ./data/execution:/vana/execution
-    command: rm -rf /vana/execution/geth
-    profiles: ["delete"]
-
-  delete-prysm:
-    <<: *default-logging
-    image: alpine:latest
-    container_name: delete-prysm
-    volumes:
-      - ./data/consensus:/vana/consensus
-    command: rm -rf /vana/consensus/beacondata /vana/consensus/validatordata
-    profiles: ["delete"]
-
   delete-all:
     <<: *default-logging
-    image: alpine:latest
     container_name: delete-all
+    image: alpine:latest
+    command: echo "All data deleted"
+    depends_on:
+      delete-geth:
+        condition: service_completed_successfully
+      delete-beacon:
+        condition: service_completed_successfully
+    profiles: ["delete"]
+
+  delete-geth:
+    <<: *default-logging
+    container_name: delete-geth
+    image: alpine:latest
+    command: rm -rf /vana/execution/geth
     volumes:
-      - ./data:/vana/data
-    command: sh -c "rm -rf /vana/data/* /vana/data/.[!.]* /vana/data/..?*"
+      - ./data/geth:/vana/execution
+    profiles: ["delete"]
+
+  delete-beacon:
+    <<: *default-logging
+    container_name: delete-prysm
+    image: alpine:latest
+    command: rm -rf /vana/consensus/beacondata
+    volumes:
+      - ./data/consensus:/vana/consensus
+    profiles: ["delete"]
+
+  # Be careful with this one, it will delete slashing protection in validator.db
+  # https://docs.prylabs.network/docs/wallet/slashing-protection
+  delete-validator:
+    <<: *default-logging
+    container_name: delete-validator
+    image: alpine:latest
+    command: rm -rf /vana/validator
+    volumes:
+      - ./data/validator:/vana/validator
     profiles: ["delete"]
 
 secrets:
