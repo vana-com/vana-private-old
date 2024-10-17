@@ -1,6 +1,15 @@
+x-logging: &default-logging
+  logging:
+    driver: "json-file"
+    options:
+      max-size: "100m"
+      max-file: "5"
+      compress: "true"
+
 services:
   # Initialization services
   jwt-gen:
+    <<: *default-logging
     image: alpine:latest
     container_name: jwt-gen
     volumes:
@@ -18,6 +27,7 @@ services:
     profiles: ["init"]
 
   geth-init:
+    <<: *default-logging
     image: ethereum/client-go:${GETH_VERSION:-latest}
     container_name: geth-init
     volumes:
@@ -35,6 +45,7 @@ services:
     profiles: ["init"]
 
   prysm-keygen:
+    <<: *default-logging
     image: alpine:latest
     container_name: prysm-keygen
     volumes:
@@ -52,6 +63,7 @@ services:
     profiles: ["init"]
 
   bootnode-init:
+    <<: *default-logging
     image: ethereum/client-go:${GETH_ALLTOOLS_VERSION:-alltools-latest}
     container_name: bootnode-init
     volumes:
@@ -68,6 +80,7 @@ services:
     profiles: ["init"]
 
   check-config:
+    <<: *default-logging
     image: alpine:latest
     container_name: check-config
     volumes:
@@ -96,6 +109,7 @@ services:
 
   # Main node services
   geth:
+    <<: *default-logging
     image: ethereum/client-go:${GETH_VERSION:-latest}
     container_name: geth
     volumes:
@@ -147,6 +161,7 @@ services:
     profiles: ["node", "validator"]
 
   beacon:
+    <<: *default-logging
     image: gcr.io/prysmaticlabs/prysm/beacon-chain:${PRYSM_VERSION:-latest}
     container_name: beacon
     volumes:
@@ -222,6 +237,7 @@ services:
 
   # Validator services
   validator-keygen:
+    <<: *default-logging
     build:
       context: https://github.com/vana-com/staking-deposit-cli.git#vana-main
       dockerfile: Dockerfile
@@ -238,6 +254,7 @@ services:
     profiles: ["manual"]
 
   validator-import:
+    <<: *default-logging
     image: gcr.io/prysmaticlabs/prysm/validator:${PRYSM_VERSION:-latest}
     container_name: validator-import
     volumes:
@@ -263,6 +280,7 @@ services:
     profiles: ["manual", "validator"]
 
   validator:
+    <<: *default-logging
     image: gcr.io/prysmaticlabs/prysm/validator:${PRYSM_VERSION:-latest}
     container_name: validator
     volumes:
@@ -295,6 +313,7 @@ services:
     profiles: ["validator"]
 
   submit-deposits:
+    <<: *default-logging
     image: ghcr.io/foundry-rs/foundry:latest
     container_name: submit-deposits
     volumes:
@@ -331,28 +350,45 @@ services:
       - deposit_private_key
 
   # Cleanup services
-  delete-geth:
+  delete-all:
+    <<: *default-logging
+    container_name: delete-all
     image: alpine:latest
-    container_name: delete-geth
-    volumes:
-      - ./data/execution:/vana/execution
-    command: rm -rf /vana/execution/geth
+    command: echo "All data deleted"
+    depends_on:
+      delete-geth:
+        condition: service_completed_successfully
+      delete-beacon:
+        condition: service_completed_successfully
     profiles: ["delete"]
 
-  delete-prysm:
+  delete-geth:
+    <<: *default-logging
+    container_name: delete-geth
     image: alpine:latest
+    command: rm -rf /vana/execution/geth
+    volumes:
+      - ./data/geth:/vana/execution
+    profiles: ["delete"]
+
+  delete-beacon:
+    <<: *default-logging
     container_name: delete-prysm
+    image: alpine:latest
+    command: rm -rf /vana/consensus/beacondata
     volumes:
       - ./data/consensus:/vana/consensus
-    command: rm -rf /vana/consensus/beacondata /vana/consensus/validatordata
     profiles: ["delete"]
 
-  delete-all:
+  # Be careful with this one, it will delete slashing protection in validator.db
+  # https://docs.prylabs.network/docs/wallet/slashing-protection
+  delete-validator:
+    <<: *default-logging
+    container_name: delete-validator
     image: alpine:latest
-    container_name: delete-all
+    command: rm -rf /vana/validator
     volumes:
-      - ./data:/vana/data
-    command: sh -c "rm -rf /vana/data/* /vana/data/.[!.]* /vana/data/..?*"
+      - ./data/validator:/vana/validator
     profiles: ["delete"]
 
 secrets:

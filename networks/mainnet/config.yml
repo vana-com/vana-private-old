@@ -1,27 +1,29 @@
-# Add these to Lighthouse' config.yaml:
-SECONDS_PER_ETH1_BLOCK: 6
-MIN_GENESIS_TIME: 0
-MIN_VALIDATOR_WITHDRAWABILITY_DELAY: 256
-SHARD_COMMITTEE_PERIOD: 256
-INACTIVITY_SCORE_BIAS: 4
-INACTIVITY_SCORE_RECOVERY_RATE: 16
-
 PRESET_BASE: mainnet
 CONFIG_NAME: vana
 
+# Same as Ethereum Mainnet
+# ---------------------------------------------------------------
+# 2**8 (= 256) epochs ~205 minutes
+MIN_VALIDATOR_WITHDRAWABILITY_DELAY: 256
+# 2**8 (= 256) epochs ~205 minutes
+SHARD_COMMITTEE_PERIOD: 256
+# 2**2 (= 4)
+INACTIVITY_SCORE_BIAS: 4
+# 2**4 (= 16)
+INACTIVITY_SCORE_RECOVERY_RATE: 16
+
 # Transition
 # ---------------------------------------------------------------
-# ~60 minutes from testing
 TERMINAL_TOTAL_DIFFICULTY: 20000000
 
 # Genesis
 # ---------------------------------------------------------------
 MIN_GENESIS_ACTIVE_VALIDATOR_COUNT: 1
-# # Sep 25, 2024, 12pm UTC
-# MIN_GENESIS_TIME: 1727352000
+MIN_GENESIS_TIME: 0
 GENESIS_FORK_VERSION: 0x20000089
-# 15 seconds
+# 120 seconds (2 minutes)
 GENESIS_DELAY: 120
+SECONDS_PER_ETH1_BLOCK: 6
 
 # Forking
 # ---------------------------------------------------------------
@@ -44,7 +46,7 @@ DENEB_FORK_EPOCH: 18446744073709551615
 DENEB_FORK_VERSION: 0x20000093
 
 # Future forks
-# # Electra
+# Electra
 ELECTRA_FORK_VERSION: 0x20000094
 ELECTRA_FORK_EPOCH: 18446744073709551615
 # # [New in Electra:EIP7251]
@@ -79,12 +81,12 @@ ETH1_FOLLOW_DISTANCE: 32
 
 # Execution
 # ---------------------------------------------------------------
-# MAX_WITHDRAWALS_PER_PAYLOAD: 17  # disabled
+# MAX_WITHDRAWALS_PER_PAYLOAD: 17  # temporarily disabled
 
 # Withdrawals
 # ---------------------------------------------------------------
 # 2**5 (= 32) validators
-# MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP: 32  # disabled
+# MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP: 32  # temporarily disabled
 
 # Validator cycle
 # ---------------------------------------------------------------
@@ -106,7 +108,7 @@ DEPOSIT_CONTRACT_ADDRESS: 0x17BbE91c315Bf14f38F6D35052a827cadfFe184e
 MIN_DEPOSIT_AMOUNT: 1000000000000
 # 35000 * 10**9 (= 35,000,000,000,000) Gwei
 # Relevant after Electra fork
-#MIN_ACTIVATION_BALANCE: 35000000000000  # disabled
+# MIN_ACTIVATION_BALANCE: 35000000000000
 # 35000 * 10**9 (= 35,000,000,000,000) Gwei
 MAX_EFFECTIVE_BALANCE: 35000000000000
 # 1000 * 10**9 (= 1,000,000,000,000) Gwei
