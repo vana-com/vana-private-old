@@ -35,13 +35,15 @@ services:
       - ./networks/${NETWORK}/genesis.json:/vana/execution/genesis.json:ro
     entrypoint: ["/bin/sh", "-c"]
     command: >
-      "if [ ! -d /vana/execution/geth/chaindata ]; then
+      "if [ \"$$REINIT_GETH\" = \"true\" ] || [ ! -d /vana/execution/geth/chaindata ]; then
          echo 'Initializing geth...';
          geth --state.scheme=${GETH_STATE_SCHEME:-path} --datadir=/vana/execution init /vana/execution/genesis.json;
          echo 'Geth initialized';
        else
          echo 'Geth already initialized';
        fi"
+    environment:
+      - REINIT_GETH
     profiles: ["init"]
 
   prysm-keygen:
