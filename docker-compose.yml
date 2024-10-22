@@ -7,6 +7,15 @@ x-logging: &default-logging
       compress: "true"
 
 services:
+  prepare-backups:
+    <<: *default-logging
+    image: alpine:latest
+    container_name: prepare-backups
+    volumes:
+      - ./backups:/backups
+    command: sh -c "mkdir -p /backups && chmod 700 /backups"
+    profiles: ["backup"]
+
   # Initialization services
   jwt-gen:
     <<: *default-logging
@@ -279,6 +288,8 @@ services:
     #     condition: service_completed_successfully
     profiles: ["manual", "validator"]
 
+
+
   validator:
     <<: *default-logging
     image: gcr.io/prysmaticlabs/prysm/validator:${PRYSM_VERSION:-latest}
@@ -287,6 +298,7 @@ services:
       - ./data/validator:/vana/validator
       - ./data/validator/wallet:/vana/wallet
       - ./networks/${NETWORK}/config.yml:/vana/consensus/config.yml:ro
+      - ./backups:/backups
     environment:
       - WITHDRAWAL_ADDRESS
     command:
@@ -301,6 +313,10 @@ services:
       - --wallet-password-file=/run/secrets/wallet_password
       - --chain-config-file=/vana/consensus/config.yml
       - --suggested-fee-recipient=${WITHDRAWAL_ADDRESS}
+      - --monitoring-host=0.0.0.0
+      - --monitoring-port=8081
+      - --enable-db-backup-webhook=${BACKUP_VALIDATOR_DB:-false}
+      - --db-backup-output-dir=/backups
     depends_on:
       beacon:
         condition: service_started
@@ -391,6 +407,154 @@ services:
       - ./data/validator:/vana/validator
     profiles: ["delete"]
 
+  geth-backup:
+    <<: *default-logging
+    image: ethereum/client-go:${GETH_VERSION:-latest}
+    container_name: geth-backup
+    volumes:
+      - ./data/execution:/root/.ethereum
+      - ./backups:/backups
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        echo "Starting geth-backup service"
+        TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+        BACKUP_FILE="/backups/geth_backup_$${TIMESTAMP}.dat"
+        echo "Exporting blockchain to $${BACKUP_FILE}"
+        geth export $${BACKUP_FILE}
+        echo "Blockchain exported to $${BACKUP_FILE}"
+        echo "Backup process completed"
+    profiles: ["backup"]
+
+  geth-restore:
+    <<: *default-logging
+    image: ethereum/client-go:${GETH_VERSION:-latest}
+    container_name: geth-restore
+    volumes:
+      - ./data/execution:/root/.ethereum
+      - ./backups:/backups:ro
+      - ./networks/${NETWORK}/genesis.json:/genesis.json:ro
+    environment:
+      - CHAIN_ID
+      - NETWORK
+      - GETH_SYNCMODE
+      - GETH_STATE_SCHEME
+      - GETH_GCMODE
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        apk add --no-cache --quiet dialog
+        BACKUP_FILE=$(dialog --stdout --menu "Choose a backup to restore" 20 60 10 $(ls -1 /backups/geth_backup_*.dat | sort -r | xargs -I {} echo {} '""'))
+        clear
+        echo "IMPORTING FROM $BACKUP_FILE"
+        if [ -n "$$BACKUP_FILE" ]; then
+          echo "Selected: $$BACKUP_FILE"
+          echo "Removing existing database..."
+          geth --datadir /root/.ethereum removedb
+
+          echo "Initializing with genesis block..."
+          geth --state.scheme=${GETH_STATE_SCHEME:-path} \
+               --datadir /root/.ethereum \
+               init /genesis.json
+
+          echo "Importing blockchain from $$BACKUP_FILE"
+          geth --datadir /root/.ethereum \
+               import $$BACKUP_FILE
+
+          echo "Blockchain imported from $$BACKUP_FILE"
+        else
+          echo "No backup selected. Exiting."
+        fi
+        echo "Restore process completed"
+    profiles: ["restore"]
+
+  beacon-backup:
+    <<: *default-logging
+    container_name: beacon-backup
+    image: alpine:latest
+    volumes:
+      - ./data/consensus:/vana/consensus:ro
+      - ./backups:/backups
+    environment:
+      - BEACON_DATADIR=/vana/consensus/beacondata
+    entrypoint: ["/bin/sh", "-c"]
+    command: >
+      "
+      mkdir -p /backups &&
+      chmod 700 /backups &&
+      TIMESTAMP=$$(date +%s) &&
+      cp -r $$BEACON_DATADIR/beaconchaindata/beaconchain.db /backups/beaconchain_$$TIMESTAMP.db &&
+      echo 'Beacon chain database backed up to /backups/beaconchain_'$$TIMESTAMP'.db'
+      "
+    depends_on:
+      prepare-backups:
+        condition: service_completed_successfully
+    profiles: ["backup"]
+
+  validator-backup:
+    <<: *default-logging
+    container_name: validator-backup
+    image: alpine:latest
+    volumes:
+      - ./backups:/backups
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        apk add --no-cache curl
+        curl -X POST http://validator:8081/db/backup
+        echo "Validator backup completed"
+    profiles: ["backup"]
+
+  beacon-restore:
+    <<: *default-logging
+    image: gcr.io/prysmaticlabs/prysm/beacon-chain:${PRYSM_VERSION:-latest}
+    container_name: beacon-restore
+    volumes:
+      - ./data/consensus:/vana/consensus
+      - ./backups:/backups:ro
+    environment:
+      - BEACON_DATADIR=/vana/consensus/beacondata
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        echo "Enter the number of the backup to restore:"
+        select BACKUP_FILE in $(ls -1 /backups/beaconchain_*.db | sort -r); do
+          if [ -n "$$BACKUP_FILE" ]; then
+            echo "Selected: $$BACKUP_FILE"
+            /app/cmd/beacon-chain/beacon-chain db restore --restore-source-file=$$BACKUP_FILE --restore-target-dir=$$BEACON_DATADIR
+            echo "Beacon chain database restored from /backups/$$BACKUP_FILE"
+            break
+          else
+            echo "Invalid selection. Please try again."
+          fi
+        done
+        echo "Restore process completed"
+    profiles: ["restore"]
+
+  validator-restore:
+    <<: *default-logging
+    image: gcr.io/prysmaticlabs/prysm/validator:${PRYSM_VERSION:-latest}
+    container_name: validator-restore
+    volumes:
+      - ./data/validator:/vana/validator
+      - ./backups:/backups:ro
+    environment:
+      - VALIDATOR_DATADIR=/vana/validator
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        echo 'Available validator backups:'
+        select BACKUP_FILE in $(ls -1 /backups/prysm_validatordb_*.backup | sort -r); do
+          if [ -n "$$BACKUP_FILE" ]; then
+            /app/cmd/validator/validator db restore --restore-source-file=$$BACKUP_FILE --restore-target-dir=$$VALIDATOR_DATADIR &&
+            echo 'Validator database restored from '$$BACKUP_FILE
+            break
+          else
+            echo 'Invalid selection. Please try again.'
+          fi
+        done
+    profiles: ["restore"]
+
 secrets:
   deposit_private_key:
     file: ./secrets/deposit_private_key.txt
@@ -398,3 +562,4 @@ secrets:
     file: ./secrets/wallet_password.txt
   account_password:
     file: ./secrets/account_password.txt
+
