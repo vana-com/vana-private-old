@@ -14,7 +14,7 @@ services:
     volumes:
       - ./backups:/backups
     command: sh -c "mkdir -p /backups && chmod 700 /backups"
-    profiles: ["backup"]
+    profiles: ["backup", "validator"]
 
   # Initialization services
   jwt-gen:
