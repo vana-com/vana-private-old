@@ -293,3 +293,80 @@ After generating validator keys and before starting your validator, you need to 
 4. Wait for the transactions to be confirmed on the network before proceeding to start your validator.
 
 For more detailed information on Docker Compose commands and options, refer to the [official Docker Compose documentation](https://docs.docker.com/compose/reference/).
+## Backup and Restore
+
+The setup includes services for backing up and restoring your node data. It's important to perform these operations regularly to ensure data safety and to have a recovery option in case of issues.
+
+### Backups
+
+To create and restore backups of your node data:
+
+#### Geth (Execution Client) Backup
+
+To perform a backup of your Geth data, ensure that the geth service is stopped, then run:
+
+```bash
+docker compose --profile backup run --rm geth-backup
+```
+
+This will create a timestamped backup file in the ./backups directory.
+
+#### Beacon Chain Backup
+
+To perform a backup of your Beacon Chain data, ensure that the beacon service is stopped, then run:
+
+```bash
+docker compose --profile backup run --rm beacon-backup
+```
+
+This creates a timestamped copy of the Beacon Chain database in the ./backups directory.
+
+#### Validator Backup
+
+The validator backup can be triggered while the validator service is running:
+
+```bash
+docker compose --profile backup run --rm validator-backup
+```
+
+This sends a request to the validator service to create a backup, which will be stored in the ./backups directory.
+
+### Restore
+
+Before performing any restore operations, ensure that the respective services are stopped.
+
+#### Geth (Execution Client) Restore
+
+To restore Geth data:
+
+```bash
+docker compose --profile restore run --rm geth-restore
+```
+
+You'll be prompted to select a backup file to restore from.
+
+#### Beacon Chain Restore
+
+To restore Beacon Chain data:
+
+```bash
+docker compose --profile restore run --rm beacon-restore
+```
+
+You'll be prompted to select a backup file to restore from.
+
+#### Validator Restore
+
+To restore Validator data:
+
+```bash
+docker compose --profile restore run --rm validator-restore
+```
+
+You'll be prompted to select a backup file to restore from.
+
+### Important Notes
+
+- Remember your password and separately backup your keystore(s)!
+- Performing backups while services are running risks corrupting the backup, with the exception of the validator backup.
+- After restoring data, you may need to resync your node to catch up with the latest state of the network.
