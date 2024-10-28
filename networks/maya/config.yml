@@ -107,8 +107,7 @@ DEPOSIT_CONTRACT_ADDRESS: 0x17BbE91c315Bf14f38F6D35052a827cadfFe184e
 # 1000 * 10**9 (= 1,000,000,000,000) Gwei
 MIN_DEPOSIT_AMOUNT: 1000000000000
 # 35000 * 10**9 (= 35,000,000,000,000) Gwei
-# Relevant after Electra fork
-MIN_ACTIVATION_BALANCE: 35000000000000  # unclear if this is applicable to Deneb
+MIN_ACTIVATION_BALANCE: 35000000000000  # mainly for Electra, but latest Prysm uses it to determine if a validator is active in Deneb
 # 35000 * 10**9 (= 35,000,000,000,000) Gwei
 MAX_EFFECTIVE_BALANCE: 35000000000000
 # 1000 * 10**9 (= 1,000,000,000,000) Gwei
