@@ -154,6 +154,12 @@ services:
       - --http.api=eth,net,web3
       # Only enable personal and admin APIs if you know what you're doing
       # - --http.api=eth,net,web3,personal,admin
+      # 5x the default
+      - --rpc.batch-request-limit=${GETH_RPC_BATCH_REQUEST_LIMIT:-5000}
+      # 5x the default
+      - --rpc.batch-response-max-size=${GETH_RPC_BATCH_RESPONSE_MAX_SIZE:-125000000}
+      # 0 is infinite
+      - --rpc.evmtimeout=${GETH_RPC_EVMTIMEOUT:-0}
       - --rpc.txfeecap=${GETH_RPC_TXFEECAP:-1000}
       # Enable the auth RPC API for the beacon node
       - --authrpc.addr=0.0.0.0
