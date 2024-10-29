@@ -107,6 +107,8 @@ services:
       - DEPOSIT_RPC_URL
       - DEPOSIT_CONTRACT_ADDRESS
       - USE_VALIDATOR=${USE_VALIDATOR:-false}
+      - INSTANCE_NAME
+      - PUBLIC_IP
     command: /vana/container-scripts/check-config.sh
     depends_on:
       geth-init:
@@ -137,6 +139,8 @@ services:
       - "127.0.0.1:${HTTP_PORT:-8545}:${HTTP_PORT:-8545}"
       # Or, if you want to make your API public, use this:
       # - "${HTTP_PORT:-8545}:${HTTP_PORT:-8545}"
+      # Do not expose the websocket API used by the stats client
+      # - "${GETH_WS_PORT:-8546}:${GETH_WS_PORT:-8546}"
     command:
       - --verbosity=3  # 0=silent, 1=error, 2=warn, 3=info, 4=debug, 5=detail
       - --networkid=${CHAIN_ID}
@@ -198,8 +202,6 @@ services:
       # - "${GRPC_GATEWAY_PORT:-3500}:${GRPC_GATEWAY_PORT:-3500}"
       - "${P2P_TCP_PORT:-13000}:${P2P_TCP_PORT:-13000}"
       - "${P2P_UDP_PORT:-12000}:${P2P_UDP_PORT:-12000}/udp"
-      # Do not expose the websocket API used by the stats client
-      # - "${GETH_WS_PORT:-8546}:${GETH_WS_PORT:-8546}"
     environment:
       - WITHDRAWAL_ADDRESS
       - PRYSM_SLOTS_PER_ARCHIVE_POINT
