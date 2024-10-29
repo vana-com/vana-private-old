@@ -1,3 +1,9 @@
-rpc.islander.vana.org {
-    reverse_proxy geth:8545
+{$DOMAIN:localhost} {
+    handle /eth* {
+        reverse_proxy beacon:{$GRPC_GATEWAY_PORT:3500}
+    }
+
+    handle /* {
+        reverse_proxy geth:{$HTTP_PORT:8545}
+    }
 }
