@@ -375,7 +375,7 @@ If you encounter SSL-related issues:
 4. Check your firewall allows traffic on ports 80 and 443
 ## Backup and Restore
 
-The setup includes services for backing up and restoring your node data. It's important to perform these operations regularly to ensure data safety and to have a recovery option in case of issues.
+The setup includes services for backing up and restoring your node data. These snapshots can be helpful for quickly syncing or migrating your node to a new machine. Geth and Prysm snapshots are also available for download from the [Vana Snapshot service](https://console.cloud.google.com/storage/browser/vana-snapshots;tab=objects?prefix=&forceOnObjectsSortingFiltering=false).
 
 ### Backups
 
