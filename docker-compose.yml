@@ -1,37 +1,31 @@
+x-logging: &default-logging
+  logging:
+    driver: "json-file"
+    options:
+      max-size: "100m"
+      max-file: "5"
+      compress: "true"
+
+x-restart: &default-restart
+  restart: unless-stopped
+
 services:
-  check-config:
-    container_name: check-config
+  prepare-backups:
+    <<: *default-logging
     image: alpine:latest
-    command: /vana/container-scripts/check-config.sh
+    container_name: prepare-backups
     volumes:
-      - .:/vana:ro
-    environment:
-      - NETWORK
-      - WITHDRAWAL_ADDRESS
-      - DEPOSIT_RPC_URL
-      - DEPOSIT_CONTRACT_ADDRESS
-      - DEPOSIT_PRIVATE_KEY
-      - USE_VALIDATOR=${USE_VALIDATOR:-false}
-    depends_on:
-      geth-init:
-        condition: service_completed_successfully
-      jwt-gen:
-        condition: service_completed_successfully
-      prysm-keygen:
-        condition: service_completed_successfully
-    profiles: ["init", "node", "validator", "manual"]
+      - ./backups:/backups
+    command: sh -c "mkdir -p /backups && chmod 700 /backups"
+    profiles: ["backup", "validator"]
 
-  delete-all:
-    container_name: delete-all
-    image: alpine:latest
-    command: sh -c "rm -rf /vana/data/* /vana/data/.[!.]* /vana/data/..?*"
-    volumes:
-      - ./data:/vana/data
-    profiles: ["delete"]
-
+  # Initialization services
   jwt-gen:
-    container_name: jwt-gen
+    <<: *default-logging
     image: alpine:latest
+    container_name: jwt-gen
+    volumes:
+      - ./data:/vana
     command: >
       sh -c '
       if [ ! -f /vana/jwt.hex ]; then
@@ -42,30 +36,34 @@ services:
       else
         echo "JWT file already exists"
       fi'
-    volumes:
-      - ./data:/vana
     profiles: ["init"]
 
   geth-init:
-    container_name: geth-init
+    <<: *default-logging
     image: ethereum/client-go:${GETH_VERSION:-latest}
+    container_name: geth-init
+    volumes:
+      - ./data/execution:/vana/execution
+      - ./networks/${NETWORK}/genesis.json:/vana/execution/genesis.json:ro
     entrypoint: ["/bin/sh", "-c"]
     command: >
-      "if [ ! -d /vana/execution/geth/chaindata ]; then
+      "if [ \"$$REINIT_GETH\" = \"true\" ] || [ ! -d /vana/execution/geth/chaindata ]; then
          echo 'Initializing geth...';
          geth --state.scheme=${GETH_STATE_SCHEME:-path} --datadir=/vana/execution init /vana/execution/genesis.json;
          echo 'Geth initialized';
        else
          echo 'Geth already initialized';
        fi"
-    volumes:
-      - ./data/execution:/vana/execution
-      - ./networks/${NETWORK}/genesis.json:/vana/execution/genesis.json:ro
+    environment:
+      - REINIT_GETH
     profiles: ["init"]
 
   prysm-keygen:
-    container_name: prysm-keygen
+    <<: *default-logging
     image: alpine:latest
+    container_name: prysm-keygen
+    volumes:
+      - ./data/consensus:/vana/consensus
     command: >
       sh -c '
       if [ ! -f /vana/consensus/prysm-key.hex ]; then
@@ -76,56 +74,101 @@ services:
       else
         echo "Prysm key already exists"
       fi'
-    volumes:
-      - ./data/consensus:/vana/consensus
     profiles: ["init"]
 
-  delete-geth:
-    container_name: delete-geth
-    image: alpine:latest
-    command: rm -rf /vana/execution/geth
+  bootnode-init:
+    <<: *default-logging
+    image: ethereum/client-go:${GETH_ALLTOOLS_VERSION:-alltools-latest}
+    container_name: bootnode-init
     volumes:
       - ./data/execution:/vana/execution
-    profiles: ["delete"]
+    command: >
+      sh -c '
+      if [ ! -f /vana/execution/bootnode.key ]; then
+        bootnode -genkey /vana/execution/bootnode.key &&
+        chmod 600 /vana/execution/bootnode.key
+        echo "Bootnode key generated"
+      else
+        echo "Bootnode key already exists"
+      fi'
+    profiles: ["init"]
 
-  delete-prysm:
-    container_name: delete-prysm
+  check-config:
+    <<: *default-logging
     image: alpine:latest
-    command: rm -rf /vana/consensus/beacondata /vana/consensus/validatordata
+    container_name: check-config
     volumes:
-      - ./data/consensus:/vana/consensus
-    profiles: ["delete"]
+      - .:/vana:ro
+      # Uncomment this when we have a better way to manage keys apart from secrets/.
+      # - /vana/secrets  # Create an empty volume, effectively hiding ./secrets
+    environment:
+      - NETWORK
+      - WITHDRAWAL_ADDRESS
+      - DEPOSIT_RPC_URL
+      - DEPOSIT_CONTRACT_ADDRESS
+      - USE_VALIDATOR=${USE_VALIDATOR:-false}
+    command: /vana/container-scripts/check-config.sh
+    depends_on:
+      geth-init:
+        condition: service_completed_successfully
+      jwt-gen:
+        condition: service_completed_successfully
+      prysm-keygen:
+        condition: service_completed_successfully
+    profiles: ["init", "node", "validator", "manual"]
+    secrets:
+      - account_password
+      - deposit_private_key
+      - wallet_password
 
+  # Main node services
   geth:
-    container_name: geth
+    <<: *default-logging
     image: ethereum/client-go:${GETH_VERSION:-latest}
+    container_name: geth
+    volumes:
+      - ./data/execution:/root/.ethereum  # Use the default so that the default ipc path works, etc.
+      - ./data/jwt.hex:/root/.ethereum/jwt.hex:ro
+    ports:
+      # Do not expose the auth RPC port used by the beacon node
+      #- "${AUTHRPC_PORT:-8551}:${AUTHRPC_PORT:-8551}"
+      - "${P2P_PORT:-30303}:${P2P_PORT:-30303}"
+      # Expose HTTP RPC on port 8545 to the host only
+      - "127.0.0.1:${HTTP_PORT:-8545}:${HTTP_PORT:-8545}"
+      # Or, if you want to make your API public, use this:
+      # - "${HTTP_PORT:-8545}:${HTTP_PORT:-8545}"
     command:
       - --verbosity=3  # 0=silent, 1=error, 2=warn, 3=info, 4=debug, 5=detail
-      - --nat=extip:${EXTERNAL_IP}
-      - --datadir=/root/.ethereum
       - --networkid=${CHAIN_ID}
+      - --datadir=/root/.ethereum
+      - --nat=extip:${EXTERNAL_IP}
+      - --port=${P2P_PORT:-30303}
+      - --syncmode=${GETH_SYNCMODE:-full}
+      - --state.scheme=${GETH_STATE_SCHEME:-path}
+      - --gcmode=${GETH_GCMODE:-full}
+      - --bootnodes=${GETH_BOOTNODES}
+      # Enable HTTP RPC, available at http://host:${HTTP_PORT:-8545}
+      # If you want to limit access to certain IPs, use --http.corsdomain="..." and --http.vhosts="..."
       - --http
-      - --http.vhosts=*
+      - --http.vhosts=${GETH_HTTP_VHOSTS:-*}
       - --http.addr=0.0.0.0
       - --http.port=${HTTP_PORT:-8545}
-      - --http.api=eth,net,web3,personal,admin
-      - --rpc.txfeecap=0
+      - --http.api=eth,net,web3
+      # Only enable personal and admin APIs if you know what you're doing
+      # - --http.api=eth,net,web3,personal,admin
+      - --rpc.txfeecap=${GETH_RPC_TXFEECAP:-1000}
+      # Enable the auth RPC API for the beacon node
       - --authrpc.addr=0.0.0.0
       - --authrpc.port=${AUTHRPC_PORT:-8551}
       - --authrpc.jwtsecret=/root/.ethereum/jwt.hex
       - --authrpc.vhosts=*
-      - --syncmode=${GETH_SYNCMODE:-full}
-      - --state.scheme=${GETH_STATE_SCHEME:-path}
-      - --gcmode=${GETH_GCMODE:-full}
-      - --port=${P2P_PORT:-30303}
-      - --bootnodes=${GETH_BOOTNODES}
-    ports:
-      - "${AUTHRPC_PORT:-8551}:${AUTHRPC_PORT:-8551}"
-      - "${HTTP_PORT:-8545}:${HTTP_PORT:-8545}"
-      - "${P2P_PORT:-30303}:${P2P_PORT:-30303}"
-    volumes:
-      - ./data/execution:/root/.ethereum  # Use the default so that the default ipc path works, etc.
-      - ./data/jwt.hex:/root/.ethereum/jwt.hex:ro
+      # Enable the websocket API for the stats client
+      - --ws
+      - --ws.addr=0.0.0.0
+      - --ws.port=${GETH_WS_PORT:-8546}
+      - --ws.api=eth,net,web3
+      - --ws.origins=*
+      - --nodekey=/root/.ethereum/bootnode.key
     depends_on:
       geth-init:
         condition: service_completed_successfully
@@ -133,12 +176,42 @@ services:
         condition: service_completed_successfully
       check-config:
         condition: service_completed_successfully
+      bootnode-init:
+        condition: service_completed_successfully
     profiles: ["node", "validator"]
 
   beacon:
-    container_name: beacon
+    <<: *default-logging
     image: gcr.io/prysmaticlabs/prysm/beacon-chain:${PRYSM_VERSION:-latest}
+    container_name: beacon
+    volumes:
+      - ./data/jwt.hex:/vana/jwt.hex:ro
+      - ./data/consensus:/vana/consensus
+      - ./networks/${NETWORK}/genesis.ssz:/vana/consensus/genesis.ssz:ro
+      - ./networks/${NETWORK}/config.yml:/vana/consensus/config.yml:ro
+    ports:
+      # Do not expose the RPC port used by the validator
+      # - "${RPC_PORT:-4000}:${RPC_PORT:-4000}"
+      # Expose the gRPC gateway on port 3500 to the host only
+      - "127.0.0.1:${GRPC_GATEWAY_PORT:-3500}:${GRPC_GATEWAY_PORT:-3500}"
+      # Or, if you want to make your API public, use this:
+      # - "${GRPC_GATEWAY_PORT:-3500}:${GRPC_GATEWAY_PORT:-3500}"
+      - "${P2P_TCP_PORT:-13000}:${P2P_TCP_PORT:-13000}"
+      - "${P2P_UDP_PORT:-12000}:${P2P_UDP_PORT:-12000}/udp"
+      # Do not expose the websocket API used by the stats client
+      # - "${GETH_WS_PORT:-8546}:${GETH_WS_PORT:-8546}"
+    environment:
+      - WITHDRAWAL_ADDRESS
+      - PRYSM_SLOTS_PER_ARCHIVE_POINT
+      - PRYSM_BLOCK_BATCH_LIMIT
+      - PRYSM_BLOCK_BATCH_LIMIT_BURST_FACTOR
+      - PRYSM_BLOB_BATCH_LIMIT
+      - PRYSM_BLOB_BATCH_LIMIT_BURST_FACTOR
     command:
+      # TODO: To use checkpoint sync, uncomment these lines and ensure that TRUSTED_BEACON_NODE_URL and WEAK_SUBJECTIVITY_CHECKPOINT are set in your .env file
+      #- --weak-subjectivity-checkpoint=${WEAK_SUBJECTIVITY_CHECKPOINT}
+      #- --checkpoint-sync-url=${TRUSTED_BEACON_NODE_URL}
+      #- --genesis-beacon-api-url=${TRUSTED_BEACON_NODE_URL}  # not strictly necessary, genesis state is provided by this repo
       - --accept-terms-of-use
       - --chain-id=${CHAIN_ID}
       - --verbosity=info
@@ -150,20 +223,19 @@ services:
       - --datadir=/vana/consensus/beacondata
       - --genesis-state=/vana/consensus/genesis.ssz
       - --chain-config-file=/vana/consensus/config.yml
-      - --execution-endpoint=http://geth:${AUTHRPC_PORT:-8545}
+      - --execution-endpoint=http://geth:${AUTHRPC_PORT:-8551}
       - --jwt-secret=/vana/jwt.hex
       - --rpc-host=0.0.0.0
       - --rpc-port=${RPC_PORT:-4000}
       - --grpc-gateway-host=0.0.0.0
       - --grpc-gateway-port=${GRPC_GATEWAY_PORT:-3500}
       - --p2p-host-ip=${EXTERNAL_IP}
-      - --bootstrap-node=${PRYSM_PEER_1}
-      - --peer=${PRYSM_PEER_1}
-      - --peer=${PRYSM_PEER_2}
-      - --peer=${PRYSM_PEER_3}
-      - --peer=${PRYSM_PEER_4}
-      - --peer=${PRYSM_PEER_5}
+      - --bootstrap-node=${PRYSM_BOOTNODE_1}
+      - --bootstrap-node=${PRYSM_BOOTNODE_2}
+      - --bootstrap-node=${PRYSM_BOOTNODE_3}
+      - --bootstrap-node=${PRYSM_BOOTNODE_4}
       # Add more peers as needed, make sure to add them to .env
+      - --p2p-static-id
       - --p2p-priv-key=/vana/consensus/prysm-key.hex
       - --suggested-fee-recipient=${WITHDRAWAL_ADDRESS}
       - --slots-per-archive-point=${PRYSM_SLOTS_PER_ARCHIVE_POINT:-512}
@@ -176,31 +248,15 @@ services:
         condition: service_completed_successfully
       check-config:
         condition: service_completed_successfully
-    ports:
-      - "${RPC_PORT:-4000}:${RPC_PORT:-4000}"
-      - "${GRPC_GATEWAY_PORT:-3500}:${GRPC_GATEWAY_PORT:-3500}"
-      - "${P2P_TCP_PORT:-13000}:${P2P_TCP_PORT:-13000}"
-      - "${P2P_UDP_PORT:-12000}:${P2P_UDP_PORT:-12000}/udp"
-    environment:
-      - WITHDRAWAL_ADDRESS
-      - PRYSM_SLOTS_PER_ARCHIVE_POINT
-      - PRYSM_BLOCK_BATCH_LIMIT
-      - PRYSM_BLOCK_BATCH_LIMIT_BURST_FACTOR
-      - PRYSM_BLOB_BATCH_LIMIT
-      - PRYSM_BLOB_BATCH_LIMIT_BURST_FACTOR
-    volumes:
-      - ./data/jwt.hex:/vana/jwt.hex:ro
-      - ./data/consensus:/vana/consensus
-      - ./networks/${NETWORK}/genesis.ssz:/vana/consensus/genesis.ssz:ro
-      - ./networks/${NETWORK}/config.yml:/vana/consensus/config.yml:ro
     profiles: ["node", "validator"]
 
+  # Validator services
   validator-keygen:
-    container_name: validator-setup
+    <<: *default-logging
     build:
       context: https://github.com/vana-com/staking-deposit-cli.git#vana-main
       dockerfile: Dockerfile
-    entrypoint: "/vana/container-scripts/validator-keygen.sh"
+    container_name: validator-setup
     volumes:
       - ./secrets:/app/validator_keys
       - ./container-scripts:/vana/container-scripts
@@ -209,22 +265,29 @@ services:
       - WITHDRAWAL_ADDRESS
       - NETWORK
       - LANGUAGE
+    entrypoint: "/vana/container-scripts/validator-keygen.sh"
     profiles: ["manual"]
 
   validator-import:
-    container_name: validator-import
+    <<: *default-logging
     image: gcr.io/prysmaticlabs/prysm/validator:${PRYSM_VERSION:-latest}
+    container_name: validator-import
+    volumes:
+      # For now, continue to mount this for --keys-dir.
+      # In the future it would be better to manage keys and deposit data apart from secrets/.
+      - ./secrets:/vana/secrets:ro
+      - ./data/validator/wallet:/vana/wallet
     command:
       - accounts
       - import
       - --accept-terms-of-use
       - --keys-dir=/vana/secrets
       - --wallet-dir=/vana/wallet
-      - --account-password-file=/vana/secrets/account_password.txt
-      - --wallet-password-file=/vana/secrets/wallet_password.txt
-    volumes:
-      - ./secrets:/vana/secrets:ro
-      - ./data/validator/wallet:/vana/wallet
+      - --account-password-file=/run/secrets/account_password
+      - --wallet-password-file=/run/secrets/wallet_password
+    secrets:
+      - account_password
+      - wallet_password
     # Re-enable if validator-keygen can be automated
     # depends_on:
     #   validator-keygen:
@@ -232,19 +295,32 @@ services:
     profiles: ["manual", "validator"]
 
   validator:
-    container_name: validator
+    <<: *default-logging
     image: gcr.io/prysmaticlabs/prysm/validator:${PRYSM_VERSION:-latest}
+    container_name: validator
+    volumes:
+      - ./data/validator:/vana/validator
+      - ./data/validator/wallet:/vana/wallet
+      - ./networks/${NETWORK}/config.yml:/vana/consensus/config.yml:ro
+      - ./backups:/backups
+    environment:
+      - WITHDRAWAL_ADDRESS
     command:
       - --accept-terms-of-use
       - --verbosity=info
-      - --beacon-rpc-provider=${EXTERNAL_IP}:${RPC_PORT:-4000}
+      # TODO: In prior testing, beacon didn't seem to work when ${EXTERNAL_IP} did. Check if this is still the case.
+      - --beacon-rpc-provider=beacon:${RPC_PORT:-4000}
+      #- --beacon-rpc-provider=${EXTERNAL_IP}:${RPC_PORT:-4000}
       - --beacon-rest-api-provider=${EXTERNAL_IP}:${RPC_PORT:-4000}
       - --datadir=/vana/validator
       - --wallet-dir=/vana/wallet
-      - --wallet-password-file=/vana/secrets/wallet_password.txt
+      - --wallet-password-file=/run/secrets/wallet_password
       - --chain-config-file=/vana/consensus/config.yml
       - --suggested-fee-recipient=${WITHDRAWAL_ADDRESS}
-      - --rpc-port=${VALIDATOR_PORT:-7000}
+      - --monitoring-host=0.0.0.0
+      - --monitoring-port=8081
+      - --enable-db-backup-webhook=${BACKUP_VALIDATOR_DB:-false}
+      - --db-backup-output-dir=/backups
     depends_on:
       beacon:
         condition: service_started
@@ -252,26 +328,19 @@ services:
         condition: service_completed_successfully
       check-config:
         condition: service_completed_successfully
-    ports:
-      - "${VALIDATOR_PORT:-7000}:${VALIDATOR_PORT:-7000}"
-    environment:
-      - WITHDRAWAL_ADDRESS
-    volumes:
-      - ./data/validator:/vana/validator
-      - ./data/validator/wallet:/vana/wallet
-      - ./secrets:/vana/secrets:ro
-      - ./networks/${NETWORK}/config.yml:/vana/consensus/config.yml:ro
+    secrets:
+      - wallet_password
     profiles: ["validator"]
 
   submit-deposits:
-    container_name: submit-deposits
+    <<: *default-logging
     image: ghcr.io/foundry-rs/foundry:latest
+    container_name: submit-deposits
     volumes:
-      - ./secrets:/validator_keys
+      - ./secrets:/validator_keys:ro
     environment:
       - DEPOSIT_RPC_URL
       - DEPOSIT_CONTRACT_ADDRESS
-      - DEPOSIT_PRIVATE_KEY
     entrypoint: ["sh", "-c"]
     command:
       - |
@@ -288,7 +357,7 @@ services:
             "0x$$SIGNATURE" \
             "0x$$DEPOSIT_DATA_ROOT" \
             --value 35000ether \
-            --private-key $$DEPOSIT_PRIVATE_KEY \
+            --private-key-file /run/secrets/deposit_private_key \
             --rpc-url $$DEPOSIT_RPC_URL
         done
     depends_on:
@@ -297,6 +366,213 @@ services:
       validator-import:
         condition: service_completed_successfully
     profiles: ["manual"]
+
+  # Cleanup services
+  delete-all:
+    <<: *default-logging
+    container_name: delete-all
+    image: alpine:latest
+    command: echo "All data deleted"
+    depends_on:
+      delete-geth:
+        condition: service_completed_successfully
+      delete-beacon:
+        condition: service_completed_successfully
+    profiles: ["delete"]
+
+  delete-geth:
+    <<: *default-logging
+    container_name: delete-geth
+    image: alpine:latest
+    command: rm -rf /vana/execution/geth
+    volumes:
+      - ./data/geth:/vana/execution
+    profiles: ["delete"]
+
+  delete-beacon:
+    <<: *default-logging
+    container_name: delete-prysm
+    image: alpine:latest
+    command: rm -rf /vana/consensus/beacondata
+    volumes:
+      - ./data/consensus:/vana/consensus
+    profiles: ["delete"]
+
+  # Be careful with this one, it will delete slashing protection in validator.db
+  # https://docs.prylabs.network/docs/wallet/slashing-protection
+  delete-validator:
+    <<: *default-logging
+    container_name: delete-validator
+    image: alpine:latest
+    command: rm -rf /vana/validator
+    volumes:
+      - ./data/validator:/vana/validator
+    profiles: ["delete"]
+
+  geth-backup:
+    <<: *default-logging
+    image: ethereum/client-go:${GETH_VERSION:-latest}
+    container_name: geth-backup
+    volumes:
+      - ./data/execution:/root/.ethereum
+      - ./backups:/backups
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        echo "Starting geth-backup service"
+        TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+        BACKUP_FILE="/backups/geth_backup_$${TIMESTAMP}.dat"
+        echo "Exporting blockchain to $${BACKUP_FILE}"
+        geth export $${BACKUP_FILE}
+        echo "Blockchain exported to $${BACKUP_FILE}"
+        echo "Backup process completed"
+    profiles: ["backup"]
+
+  geth-restore:
+    <<: *default-logging
+    image: ethereum/client-go:${GETH_VERSION:-latest}
+    container_name: geth-restore
+    volumes:
+      - ./data/execution:/root/.ethereum
+      - ./backups:/backups:ro
+      - ./networks/${NETWORK}/genesis.json:/genesis.json:ro
+    environment:
+      - CHAIN_ID
+      - NETWORK
+      - GETH_SYNCMODE
+      - GETH_STATE_SCHEME
+      - GETH_GCMODE
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        apk add --no-cache --quiet dialog
+        BACKUP_FILE=$(dialog --stdout --menu "Choose a backup to restore" 20 60 10 $(ls -1 /backups/geth_backup_*.dat | sort -r | xargs -I {} echo {} '""'))
+        clear
+        echo "IMPORTING FROM $BACKUP_FILE"
+        if [ -n "$$BACKUP_FILE" ]; then
+          echo "Selected: $$BACKUP_FILE"
+          echo "Removing existing database..."
+          geth --datadir /root/.ethereum removedb
+
+          echo "Initializing with genesis block..."
+          geth --state.scheme=${GETH_STATE_SCHEME:-path} \
+               --datadir /root/.ethereum \
+               init /genesis.json
+
+          echo "Importing blockchain from $$BACKUP_FILE"
+          geth --datadir /root/.ethereum \
+               import $$BACKUP_FILE
+
+          echo "Blockchain imported from $$BACKUP_FILE"
+        else
+          echo "No backup selected. Exiting."
+        fi
+        echo "Restore process completed"
+    profiles: ["restore"]
+
+  beacon-backup:
+    <<: *default-logging
+    container_name: beacon-backup
+    image: alpine:latest
+    volumes:
+      - ./data/consensus:/vana/consensus:ro
+      - ./backups:/backups
+    environment:
+      - BEACON_DATADIR=/vana/consensus/beacondata
+    entrypoint: ["/bin/sh", "-c"]
+    command: >
+      "
+      mkdir -p /backups &&
+      chmod 700 /backups &&
+      TIMESTAMP=$$(date +%s) &&
+      cp -r $$BEACON_DATADIR/beaconchaindata/beaconchain.db /backups/beaconchain_$$TIMESTAMP.db &&
+      echo 'Beacon chain database backed up to /backups/beaconchain_'$$TIMESTAMP'.db'
+      "
+    depends_on:
+      prepare-backups:
+        condition: service_completed_successfully
+    profiles: ["backup"]
+
+  validator-backup:
+    <<: *default-logging
+    container_name: validator-backup
+    image: alpine:latest
+    volumes:
+      - ./backups:/backups
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        apk add --no-cache curl
+        curl -X POST http://validator:8081/db/backup
+        echo "Validator backup completed"
+    profiles: ["backup"]
+
+  beacon-restore:
+    <<: *default-logging
+    image: gcr.io/prysmaticlabs/prysm/beacon-chain:${PRYSM_VERSION:-latest}
+    container_name: beacon-restore
+    volumes:
+      - ./data/consensus:/vana/consensus
+      - ./backups:/backups:ro
+    environment:
+      - BEACON_DATADIR=/vana/consensus/beacondata
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        echo "Enter the number of the backup to restore:"
+        select BACKUP_FILE in $(ls -1 /backups/beaconchain_*.db | sort -r); do
+          if [ -n "$$BACKUP_FILE" ]; then
+            echo "Selected: $$BACKUP_FILE"
+            /app/cmd/beacon-chain/beacon-chain db restore --restore-source-file=$$BACKUP_FILE --restore-target-dir=$$BEACON_DATADIR
+            echo "Beacon chain database restored from /backups/$$BACKUP_FILE"
+            break
+          else
+            echo "Invalid selection. Please try again."
+          fi
+        done
+        echo "Restore process completed"
+    profiles: ["restore"]
+
+  validator-restore:
+    <<: *default-logging
+    image: gcr.io/prysmaticlabs/prysm/validator:${PRYSM_VERSION:-latest}
+    container_name: validator-restore
+    volumes:
+      - ./data/validator:/vana/validator
+      - ./backups:/backups:ro
+    environment:
+      - VALIDATOR_DATADIR=/vana/validator
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        echo 'Available validator backups:'
+        select BACKUP_FILE in $(ls -1 /backups/prysm_validatordb_*.backup | sort -r); do
+          if [ -n "$$BACKUP_FILE" ]; then
+            /app/cmd/validator/validator db restore --restore-source-file=$$BACKUP_FILE --restore-target-dir=$$VALIDATOR_DATADIR &&
+            echo 'Validator database restored from '$$BACKUP_FILE
+            break
+          else
+            echo 'Invalid selection. Please try again.'
+          fi
+        done
+    profiles: ["restore"]
+
+  stats:
+    <<: [*default-logging, *default-restart]
+    image: vanaorg/stats-client:latest
+    container_name: stats
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - STATS_SERVER_URL=${STATS_SERVER_URL}
+      - INSTANCE_NAME=${INSTANCE_NAME}
+      - PUBLIC_KEY=${PUBLIC_KEY}
+      - EXECUTION_WS_ENDPOINT=ws://geth:${GETH_WS_PORT:-8546}
+      - BEACON_RPC_PROVIDER=http://beacon:${GRPC_GATEWAY_PORT:-3500}
+      - WS_SECRET=${WS_SECRET}
+    profiles:
+      - validator
+      - monitoring
 
   caddy:
     image: caddy:2
@@ -318,3 +594,14 @@ services:
       beacon:
         condition: service_started
     profiles: ["public"]
+    secrets:
+      - deposit_private_key
+
+secrets:
+  deposit_private_key:
+    file: ./secrets/deposit_private_key.txt
+  wallet_password:
+    file: ./secrets/wallet_password.txt
+  account_password:
+    file: ./secrets/account_password.txt
+

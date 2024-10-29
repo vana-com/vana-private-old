@@ -1,8 +1,8 @@
 #!/bin/sh
 
 # Check NETWORK
-if [ "$NETWORK" != "moksha" ] && [ "$NETWORK" != "mainnet" ]; then
-  echo "Error: Invalid NETWORK '$NETWORK', must be either 'moksha' or 'mainnet'"
+if [ "$NETWORK" != "moksha" ] && [ "$NETWORK" != "maya" ] && [ "$NETWORK" != "mainnet" ]; then
+  echo "Error: Invalid NETWORK '$NETWORK', must be either 'moksha' or 'maya' or 'mainnet'"
   exit 1
 fi
 
@@ -64,15 +64,6 @@ if [ "$USE_VALIDATOR" = "true" ]; then
 
   echo "Wallet password file check passed"
 
-  # Check DEPOSIT_PRIVATE_KEY
-  if [ -z "$DEPOSIT_PRIVATE_KEY" ] || [ "$DEPOSIT_PRIVATE_KEY" = "0000000000000000000000000000000000000000000000000000000000000000" ]; then
-    echo "Error: DEPOSIT_PRIVATE_KEY is not set or is still the default value."
-    echo "Please set a valid private key for deposits in your .env file."
-    exit 1
-  fi
-
-  echo "DEPOSIT_PRIVATE_KEY check passed"
-
   # Check if account password file exists
   if [ ! -f /vana/secrets/account_password.txt ]; then
     echo "Error: Account password file not found at /vana/secrets/account_password.txt. See README.md for instructions on how to set up validator keys and password."
@@ -90,13 +81,13 @@ if [ "$USE_VALIDATOR" = "true" ]; then
   echo "Wallet password file check passed"
 
   # Check DEPOSIT_PRIVATE_KEY
-  if [ -z "$DEPOSIT_PRIVATE_KEY" ] || [ "$DEPOSIT_PRIVATE_KEY" = "0000000000000000000000000000000000000000000000000000000000000000" ]; then
-      echo "Error: DEPOSIT_PRIVATE_KEY is not set or is still the default value."
-      echo "Please set a valid private key for deposits in your .env file."
+  if [ ! -s /run/secrets/deposit_private_key ] || [ "$(cat /run/secrets/deposit_private_key)" = "0000000000000000000000000000000000000000000000000000000000000000" ]; then
+      echo "Error: Deposit private key is not set, empty, or still the default value."
+      echo "Please set a valid private key for deposits in your secrets file."
       exit 1
   fi
 
-  echo "DEPOSIT_PRIVATE_KEY check passed"
+  echo "Deposit private key check passed"
 
   # Check DEPOSIT_RPC_URL
   if [ -z "$DEPOSIT_RPC_URL" ]; then
@@ -115,6 +106,24 @@ if [ "$USE_VALIDATOR" = "true" ]; then
   fi
 
   echo "DEPOSIT_CONTRACT_ADDRESS check passed"
+
+  # Check PUBLIC_KEY
+  if [ -z "$PUBLIC_KEY" ] || [ "$PUBLIC_KEY" = "0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000" ]; then
+    echo "Error: PUBLIC_KEY is not set or is still the default value."
+    echo "Please set a valid public key in your .env file."
+    exit 1
+  fi
+
+  echo "PUBLIC_KEY check passed"
+
+  # Check INSTANCE_NAME
+  if [ -z "$INSTANCE_NAME" ] || [ "$INSTANCE_NAME" = "Example Validator" ]; then
+    echo "Error: INSTANCE_NAME is not set or is still the default value."
+    echo "Please set a unique instance name in your .env file."
+    exit 1
+  fi
+
+  echo "INSTANCE_NAME check passed"
 else
   echo "Skipping validator-specific checks..."
 fi

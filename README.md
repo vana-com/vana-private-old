@@ -31,6 +31,27 @@ This guide will help you set up a validator node for the Vana Proof-of-Stake (Po
    # Edit .env with your preferred text editor
    ```
 
+> **Checkpoint Sync Recommended**
+>
+> To avoid very long sync times, it's highly recommended to use checkpoint sync.
+> In your `.env` file, set the following variables:
+>
+> ```
+> TRUSTED_BEACON_NODE_URL=http://archive.vana.org:3500  # Use appropriate URL for your network
+> WEAK_SUBJECTIVITY_CHECKPOINT=0x0000000000000000000000000000000000000000000000000000000000000000:0  # Replace with actual checkpoint
+> ```
+> WEAK_SUBJECTIVITY_CHECKPOINT is a block root:epoch number of the checkpoint that you want to sync to.
+>
+> Then, in the `docker-compose.yml` file, uncomment these lines in the `beacon` service:
+>
+> ```yaml
+> - --weak-subjectivity-checkpoint=${WEAK_SUBJECTIVITY_CHECKPOINT}
+> - --checkpoint-sync-url=${TRUSTED_BEACON_NODE_URL}  # not strictly necessary, but recommended for safety
+> - --genesis-beacon-api-url=${TRUSTED_BEACON_NODE_URL}  # not strictly necessary, genesis state is provided by this repo
+> ```
+>
+> This can significantly reduce the time it takes for your node to sync with the network.
+
 3. Choose your setup:
 
    a. For running a node without a validator:
@@ -267,16 +288,21 @@ After generating validator keys and before starting your validator, you need to 
 1. Ensure you have the following environment variables set in your `.env` file:
    - `DEPOSIT_RPC_URL`: The RPC URL for the network on which you're submitting deposits
    - `DEPOSIT_CONTRACT_ADDRESS`: The address of the deposit contract
-   - `DEPOSIT_PRIVATE_KEY`: The private key of the account funding the deposits
 
-2. Run the deposit submission process:
+2. Create a file named `deposit_private_key.txt` in the `./secrets` directory containing the private key of the account funding the deposits:
    ```bash
-   docker compose --profile deposit run --rm submit-deposits
+   echo "your_private_key_here" > ./secrets/deposit_private_key.txt
+   ```
+   Replace `your_private_key_here` with the actual private key.
+
+3. Run the deposit submission process:
+   ```bash
+   docker compose --profile manual run --rm submit-deposits
    ```
 
    This command will iterate through all generated validator keys and submit the required deposits.
 
-3. Wait for the transactions to be confirmed on the network before proceeding to start your validator.
+4. Wait for the transactions to be confirmed on the network before proceeding to start your validator.
 
 For more detailed information on Docker Compose commands and options, refer to the [official Docker Compose documentation](https://docs.docker.com/compose/reference/).
 
@@ -347,3 +373,80 @@ If you encounter SSL-related issues:
 2. Verify your domain points to your server's IP address
 3. Confirm ports 80 and 443 aren't used by other services
 4. Check your firewall allows traffic on ports 80 and 443
+## Backup and Restore
+
+The setup includes services for backing up and restoring your node data. It's important to perform these operations regularly to ensure data safety and to have a recovery option in case of issues.
+
+### Backups
+
+To create and restore backups of your node data:
+
+#### Geth (Execution Client) Backup
+
+To perform a backup of your Geth data, ensure that the geth service is stopped, then run:
+
+```bash
+docker compose --profile backup run --rm geth-backup
+```
+
+This will create a timestamped backup file in the ./backups directory.
+
+#### Beacon Chain Backup
+
+To perform a backup of your Beacon Chain data, ensure that the beacon service is stopped, then run:
+
+```bash
+docker compose --profile backup run --rm beacon-backup
+```
+
+This creates a timestamped copy of the Beacon Chain database in the ./backups directory.
+
+#### Validator Backup
+
+The validator backup can be triggered while the validator service is running:
+
+```bash
+docker compose --profile backup run --rm validator-backup
+```
+
+This sends a request to the validator service to create a backup, which will be stored in the ./backups directory.
+
+### Restore
+
+Before performing any restore operations, ensure that the respective services are stopped.
+
+#### Geth (Execution Client) Restore
+
+To restore Geth data:
+
+```bash
+docker compose --profile restore run --rm geth-restore
+```
+
+You'll be prompted to select a backup file to restore from.
+
+#### Beacon Chain Restore
+
+To restore Beacon Chain data:
+
+```bash
+docker compose --profile restore run --rm beacon-restore
+```
+
+You'll be prompted to select a backup file to restore from.
+
+#### Validator Restore
+
+To restore Validator data:
+
+```bash
+docker compose --profile restore run --rm validator-restore
+```
+
+You'll be prompted to select a backup file to restore from.
+
+### Important Notes
+
+- Remember your password and separately backup your keystore(s)!
+- Performing backups while services are running risks corrupting the backup, with the exception of the validator backup.
+- After restoring data, you may need to resync your node to catch up with the latest state of the network.
