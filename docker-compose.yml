@@ -294,8 +294,6 @@ services:
     #     condition: service_completed_successfully
     profiles: ["manual", "validator"]
 
-
-
   validator:
     <<: *default-logging
     image: gcr.io/prysmaticlabs/prysm/validator:${PRYSM_VERSION:-latest}
@@ -368,8 +366,6 @@ services:
       validator-import:
         condition: service_completed_successfully
     profiles: ["manual"]
-    secrets:
-      - deposit_private_key
 
   # Cleanup services
   delete-all:
@@ -577,6 +573,29 @@ services:
     profiles:
       - validator
       - monitoring
+
+  caddy:
+    image: caddy:2
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - ./data/caddy:/data
+      - ./data/caddy/config:/config
+      - ./data/caddy/certs:/usr/local/share/ca-certificates
+    environment:
+      - DOMAIN=${DOMAIN:-localhost}
+      - HTTP_PORT=${HTTP_PORT:-8545}
+      - GRPC_GATEWAY_PORT=${GRPC_GATEWAY_PORT:-3500}
+    depends_on:
+      geth:
+        condition: service_started
+      beacon:
+        condition: service_started
+    profiles: ["public"]
+    secrets:
+      - deposit_private_key
 
 secrets:
   deposit_private_key:

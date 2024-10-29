@@ -187,12 +187,24 @@ Different profiles are available for various operations:
 - `validator`: Run validator-specific services
 - `manual`: For manual operations like key generation
 - `delete`: Delete data, e.g. to reset the chain so you can re-sync
+- `public`: Expose APIs securely via Caddy reverse proxy (ports 80/443)
 
 You can combine profiles as needed. Whenever a service depends on another service, you must include the dependent profile.
 
  For example, to start the node, you must include the `init` and `node` profiles:
 ```bash
 docker compose --profile init --profile node up -d
+```
+
+For example, to run the node with public API access:
+```bash
+docker compose --profile init --profile node --profile public up -d
+```
+
+Or to start/stop just the API gateway:
+```bash
+docker compose --profile init --profile node --profile public up -d caddy
+docker compose --profile init --profile node --profile public down caddy
 ```
 
 ### Key Management
@@ -293,9 +305,77 @@ After generating validator keys and before starting your validator, you need to 
 4. Wait for the transactions to be confirmed on the network before proceeding to start your validator.
 
 For more detailed information on Docker Compose commands and options, refer to the [official Docker Compose documentation](https://docs.docker.com/compose/reference/).
+
+## Using the API Gateway
+
+The validator node exposes its APIs through a Caddy reverse proxy for secure HTTPS access. By default, it uses `localhost` but you can configure a custom domain in your `.env` file.
+
+### Domain Setup
+
+If using a custom domain:
+1. Point your domain's DNS to your server's IP address
+2. Ensure ports 80 and 443 are open on your firewall
+3. Set your domain in the `.env` file
+
+### Local Testing
+
+For local testing, you can access the APIs using curl with the `-k` flag to skip certificate verification:
+
+```bash
+# Query beacon node identity
+curl -k -X 'GET' 'https://localhost:443/eth/v1/node/identity' -H 'accept: application/json'
+
+# Query execution node info
+curl -k -s -X POST -H "Content-Type: application/json" \
+  --data '{"jsonrpc":"2.0","method":"admin_nodeInfo","params":[],"id":1}' \
+  https://localhost:443
+```
+
+### Installing Local CA Certificate
+
+You can also install Caddy's root CA certificate on your host machine:
+
+Linux:
+```bash
+docker compose cp \
+    caddy:/data/caddy/pki/authorities/local/root.crt \
+    /usr/local/share/ca-certificates/root.crt \
+  && sudo update-ca-certificates
+```
+
+macOS:
+```bash
+docker compose cp \
+    caddy:/data/caddy/pki/authorities/local/root.crt \
+    /tmp/root.crt \
+  && sudo security add-trusted-cert -d -r trustRoot \
+    -k /Library/Keychains/System.keychain /tmp/root.crt
+```
+
+Windows:
+```bash
+docker compose cp \
+    caddy:/data/caddy/pki/authorities/local/root.crt \
+    %TEMP%/root.crt \
+  && certutil -addstore -f "ROOT" %TEMP%/root.crt
+```
+
+Note: Many modern browsers maintain their own certificate trust stores. You may need to manually import the root.crt file in your browser's security settings.
+
+### Troubleshooting SSL
+
+If you encounter SSL-related issues:
+
+1. Check Caddy logs:
+   ```bash
+   docker compose logs caddy
+   ```
+2. Verify your domain points to your server's IP address
+3. Confirm ports 80 and 443 aren't used by other services
+4. Check your firewall allows traffic on ports 80 and 443
 ## Backup and Restore
 
-The setup includes services for backing up and restoring your node data. It's important to perform these operations regularly to ensure data safety and to have a recovery option in case of issues.
+The setup includes services for backing up and restoring your node data. These snapshots can be helpful for quickly syncing or migrating your node to a new machine. Geth and Prysm snapshots are also available for download from the [Vana Snapshot service](https://console.cloud.google.com/storage/browser/vana-snapshots;tab=objects?prefix=&forceOnObjectsSortingFiltering=false).
 
 ### Backups
 
