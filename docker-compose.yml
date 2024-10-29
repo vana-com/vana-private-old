@@ -108,7 +108,7 @@ services:
       - DEPOSIT_CONTRACT_ADDRESS
       - USE_VALIDATOR=${USE_VALIDATOR:-false}
       - INSTANCE_NAME
-      - PUBLIC_IP
+      - PUBLIC_KEY
     command: /vana/container-scripts/check-config.sh
     depends_on:
       geth-init:
