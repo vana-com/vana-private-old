@@ -5,61 +5,65 @@
 
 {$DOMAIN:localhost} {
     tls {
-        # You can also specify custom cert/key:
-        # cert_file /path/to/cert.pem
-        # key_file /path/to/key.pem
     }
 
-    @trusted {
+    @trusted_ips {
         remote_ip private_ranges
         remote_ip {$RPC_TRUSTED_IP_RANGES}
     }
 
+    @public_el {
+        expression `{
+            ["eth_", "net_", "web3_"].some(
+                prefix => json.parse(string(http.request.body)).method.startsWith(prefix)
+            )
+        }`
+    }
+
+    @public_cl {
+        path /eth/v1/beacon/genesis*
+        path /eth/v1/beacon/headers*
+        path /eth/v1/node/health
+        path /eth/v1/node/syncing
+    }
+
     # Unlimited access for trusted IPs
-    handle @trusted {
+    handle @trusted_ips {
         handle /eth* {
             reverse_proxy beacon:{$GRPC_GATEWAY_PORT:3500}
         }
-
         handle /* {
             reverse_proxy geth:{$HTTP_PORT:8545}
         }
     }
 
-    # Restricted access for everyone else
-    handle {
-        rate_limit {
-            zone global {
-                events 100
-                window 10s
-            }
-        }
-
-        # Safe beacon endpoints
-        handle /eth/v1/beacon/genesis* {
-            reverse_proxy beacon:{$GRPC_GATEWAY_PORT:3500}
-        }
-        handle /eth/v1/beacon/headers* {
-            reverse_proxy beacon:{$GRPC_GATEWAY_PORT:3500}
-        }
-        handle /eth/v1/beacon/states/*/validators {
-            method GET
-            reverse_proxy beacon:{$GRPC_GATEWAY_PORT:3500}
-        }
-        handle /eth/v1/node/health {
-            reverse_proxy beacon:{$GRPC_GATEWAY_PORT:3500}
-        }
-        handle /eth/v1/node/syncing {
-            reverse_proxy beacon:{$GRPC_GATEWAY_PORT:3500}
-        }
-
-        handle /eth/* {
-            respond 404
-        }
-
-        # Execution layer
-        handle /* {
-            reverse_proxy geth:{$HTTP_PORT:8545}
+    # Rate limit for untrusted IPs
+    rate_limit {
+        zone global {
+            events 100
+            window 10s
         }
     }
+
+    # Safe beacon endpoints
+    handle @public_cl {
+        reverse_proxy beacon:{$GRPC_GATEWAY_PORT:3500}
+    }
+
+    handle /eth/v1/beacon/states/*/validators {
+        method GET
+        reverse_proxy beacon:{$GRPC_GATEWAY_PORT:3500}
+    }
+
+    handle /eth/* {
+        respond 404
+    }
+
+    # Execution layer
+    handle @public_el {
+        reverse_proxy geth:{$HTTP_PORT:8545}
+    }
+
+    # Block everything else
+    respond 404
 }

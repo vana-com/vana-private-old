@@ -157,9 +157,11 @@ services:
       - --http.vhosts=${GETH_HTTP_VHOSTS:-*}
       - --http.addr=0.0.0.0
       - --http.port=${HTTP_PORT:-8545}
-      - --http.api=eth,net,web3
-      # Only enable personal and admin APIs if you know what you're doing
-      # - --http.api=eth,net,web3,personal,admin
+      # Instead of just safe-for-public APIs...
+      # - --http.api=eth,net,web3
+      # (Only enable personal and admin APIs if you know what you're doing)
+      # ...we enable all APIs and ensure that only trusted IPs can access them via Caddy
+      - --http.api=eth,net,web3,personal,admin,txpool
       # 5x the default
       - --rpc.batch-request-limit=${GETH_RPC_BATCH_REQUEST_LIMIT:-5000}
       # 5x the default
