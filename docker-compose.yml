@@ -603,7 +603,6 @@ services:
       - DOMAIN=${DOMAIN:-localhost}
       - HTTP_PORT=${HTTP_PORT:-8545}
       - GRPC_GATEWAY_PORT=${GRPC_GATEWAY_PORT:-3500}
-      - ACME_EMAIL=${ACME_EMAIL}
       - RPC_TRUSTED_IP_RANGES=${RPC_TRUSTED_IP_RANGES}
       - CADDY_EMAIL_DIRECTIVE=${CADDY_EMAIL_DIRECTIVE}
     depends_on:
@@ -611,7 +610,7 @@ services:
         condition: service_started
       beacon:
         condition: service_started
-    profiles: ["public"]
+    profiles: ["node", "validator"]
     secrets:
       - deposit_private_key
 
