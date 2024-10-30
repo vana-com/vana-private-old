@@ -372,7 +372,7 @@ services:
             "0x$$SIGNATURE" \
             "0x$$DEPOSIT_DATA_ROOT" \
             --value 35000ether \
-            --private-key-file /run/secrets/deposit_private_key \
+            --private-key $$(cat /run/secrets/deposit_private_key) \
             --rpc-url $$DEPOSIT_RPC_URL
         done
     depends_on:
