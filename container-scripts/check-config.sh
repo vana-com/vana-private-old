@@ -107,14 +107,14 @@ if [ "$USE_VALIDATOR" = "true" ]; then
 
   echo "DEPOSIT_CONTRACT_ADDRESS check passed"
 
-  # Check PUBLIC_KEY
-  if [ -z "$PUBLIC_KEY" ] || [ "$PUBLIC_KEY" = "0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000" ]; then
-    echo "Error: PUBLIC_KEY is not set or is still the default value."
-    echo "Please set a valid public key in your .env file."
+  # Check VALIDATOR_PUBLIC_KEY
+  if [ -z "$VALIDATOR_PUBLIC_KEY" ] || [ "$VALIDATOR_PUBLIC_KEY" = "0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000" ]; then
+    echo "Error: VALIDATOR_PUBLIC_KEY is not set or is still the default value."
+    echo "Please set a valid validator public key in your .env file."
     exit 1
   fi
 
-  echo "PUBLIC_KEY check passed"
+  echo "VALIDATOR_PUBLIC_KEY check passed"
 
   # Check INSTANCE_NAME
   if [ -z "$INSTANCE_NAME" ] || [ "$INSTANCE_NAME" = "Example Validator" ]; then

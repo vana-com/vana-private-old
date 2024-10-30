@@ -63,7 +63,7 @@ This guide will help you set up a validator node for the Vana Proof-of-Stake (Po
 
    b. For running a validator node:
 
-   Edit the `.env` file to set `USE_VALIDATOR=true` and set the `DEPOSIT_*` variables appropriately.
+   Edit the `.env` file to set `USE_VALIDATOR=true`, set the `DEPOSIT_*` variables appropriately, and set the wallet's private key for the deposit in `secrets/deposit_private_key.txt`.
 
    If you already have validator keys:
    - Place your keystore files in the `./secrets` directory
@@ -230,7 +230,7 @@ docker compose --profile delete run --rm delete-all
 To delete execution or consensus layer data:
 ```bash
 docker compose --profile delete run --rm delete-geth
-docker compose --profile delete run --rm delete-prysm
+docker compose --profile delete run --rm delete-beacon
 ```
 
 ### Configuration Check
