@@ -157,11 +157,9 @@ services:
       - --http.vhosts=${GETH_HTTP_VHOSTS:-*}
       - --http.addr=0.0.0.0
       - --http.port=${HTTP_PORT:-8545}
-      # Instead of just safe-for-public APIs...
-      # - --http.api=eth,net,web3
-      # (Only enable personal and admin APIs if you know what you're doing)
-      # ...we enable all APIs and ensure that only trusted IPs can access them via Caddy
-      - --http.api=eth,net,web3,personal,admin,txpool
+      - --http.api=eth,net,web3
+      # Only enable personal and admin APIs if you know what you're doing. It's not possible to limit access to just some of them via Caddy.
+      #- --http.api=eth,net,web3,personal,admin,txpool
       # 5x the default
       - --rpc.batch-request-limit=${GETH_RPC_BATCH_REQUEST_LIMIT:-5000}
       # 5x the default
@@ -403,7 +401,7 @@ services:
     image: alpine:latest
     command: rm -rf /vana/execution/geth
     volumes:
-      - ./data/geth:/vana/execution
+      - ./data/execution:/vana/execution
     profiles: ["delete"]
 
   delete-beacon:
@@ -607,6 +605,7 @@ services:
       - GRPC_GATEWAY_PORT=${GRPC_GATEWAY_PORT:-3500}
       - ACME_EMAIL=${ACME_EMAIL}
       - RPC_TRUSTED_IP_RANGES=${RPC_TRUSTED_IP_RANGES}
+      - CADDY_EMAIL_DIRECTIVE=${CADDY_EMAIL_DIRECTIVE}
     depends_on:
       geth:
         condition: service_started

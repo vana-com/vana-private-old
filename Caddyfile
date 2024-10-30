@@ -1,92 +1,52 @@
 {
-    email {$ACME_EMAIL}
-    auto_https enable_redirect
+    {$EMAIL_DIRECTIVE}
+    # debug  # Uncomment to enable debug mode
 }
 
 {$DOMAIN:localhost} {
-    tls {
-    }
+    header -Server
 
-    @trusted_ips {
+    @trusted {
         remote_ip private_ranges
         remote_ip {$RPC_TRUSTED_IP_RANGES}
     }
 
+    # Execution layer public endpoints
     @public_el {
-        expression `{
-            ["eth_", "net_", "web3_"].some(
-                prefix => json.parse(string(http.request.body)).method.startsWith(prefix)
-            )
-        }`
+        method POST
+        header Content-Type application/json
+        # Forward all EL requests. In a perfect world, we could filter on the method in the request body, but alas.
+        path /
     }
 
+    # Consensus layer public endpoints
     @public_cl {
         path /eth/v1/beacon/genesis*
         path /eth/v1/beacon/headers*
         path /eth/v1/beacon/states/*/validators
+        path /eth/v1/beacon/states/*/finality_checkpoints
         path /eth/v1/node/health
         path /eth/v1/node/syncing
+        path /eth/v1/node/identity
     }
 
-    # Rate limit for untrusted IPs
-    @rate_limit_targets {
-        not @trusted_ips
-    }
-
-    rate_limit @rate_limit_targets {
-        zone global {
-            events 100
-            window 10s
-        }
-    }
-
-    # Most common: public execution layer endpoints
+    # Public execution layer endpoints
     handle @public_el {
-        reverse_proxy geth:{$HTTP_PORT:8545} {
-            timeout 30s
-        }
+        reverse_proxy geth:{$HTTP_PORT:8545}
     }
 
-    # Common: public consensus layer endpoints
+    # Public consensus layer endpoints
     handle @public_cl {
-        reverse_proxy beacon:{$GRPC_GATEWAY_PORT:3500} {
-            timeout 30s
-        }
+        reverse_proxy beacon:{$GRPC_GATEWAY_PORT:3500}
     }
 
-    # Less common: trusted IP access
-    handle @trusted_ips {
+    # Trusted IP access
+    handle @trusted {
         handle /eth* {
-            reverse_proxy beacon:{$GRPC_GATEWAY_PORT:3500} {
-                timeout 30s
-            }
-        }
-        handle /* {
-            reverse_proxy geth:{$HTTP_PORT:8545} {
-                timeout 30s
-            }
+            reverse_proxy beacon:{$GRPC_GATEWAY_PORT:3500}
         }
     }
 
-    @internal_ips {
-        remote_ip private_ranges
-    }
-
-    @admin_el {
-        expression `{
-            json.parse(string(http.request.body)).method.startsWith("admin_")
-        }`
-    }
-
-    # Least common: admin methods for internal IPs
-    handle @internal_ips {
-        handle @admin_el {
-            reverse_proxy geth:{$HTTP_PORT:8545} {
-                timeout 30s
-            }
-        }
-    }
-
-    # Default: block everything else
+    # Default: block unhandled requests
     respond 404
 }
