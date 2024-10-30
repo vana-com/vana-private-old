@@ -23,47 +23,70 @@
     @public_cl {
         path /eth/v1/beacon/genesis*
         path /eth/v1/beacon/headers*
+        path /eth/v1/beacon/states/*/validators
         path /eth/v1/node/health
         path /eth/v1/node/syncing
     }
 
-    # Unlimited access for trusted IPs
-    handle @trusted_ips {
-        handle /eth* {
-            reverse_proxy beacon:{$GRPC_GATEWAY_PORT:3500}
-        }
-        handle /* {
-            reverse_proxy geth:{$HTTP_PORT:8545}
-        }
+    # Rate limit for untrusted IPs
+    @rate_limit_targets {
+        not @trusted_ips
     }
 
-    # Rate limit for untrusted IPs
-    rate_limit {
+    rate_limit @rate_limit_targets {
         zone global {
             events 100
             window 10s
         }
     }
 
-    # Safe beacon endpoints
-    handle @public_cl {
-        reverse_proxy beacon:{$GRPC_GATEWAY_PORT:3500}
-    }
-
-    handle /eth/v1/beacon/states/*/validators {
-        method GET
-        reverse_proxy beacon:{$GRPC_GATEWAY_PORT:3500}
-    }
-
-    handle /eth/* {
-        respond 404
-    }
-
-    # Execution layer
+    # Most common: public execution layer endpoints
     handle @public_el {
-        reverse_proxy geth:{$HTTP_PORT:8545}
+        reverse_proxy geth:{$HTTP_PORT:8545} {
+            timeout 30s
+        }
     }
 
-    # Block everything else
+    # Common: public consensus layer endpoints
+    handle @public_cl {
+        reverse_proxy beacon:{$GRPC_GATEWAY_PORT:3500} {
+            timeout 30s
+        }
+    }
+
+    # Less common: trusted IP access
+    handle @trusted_ips {
+        handle /eth* {
+            reverse_proxy beacon:{$GRPC_GATEWAY_PORT:3500} {
+                timeout 30s
+            }
+        }
+        handle /* {
+            reverse_proxy geth:{$HTTP_PORT:8545} {
+                timeout 30s
+            }
+        }
+    }
+
+    @internal_ips {
+        remote_ip private_ranges
+    }
+
+    @admin_el {
+        expression `{
+            json.parse(string(http.request.body)).method.startsWith("admin_")
+        }`
+    }
+
+    # Least common: admin methods for internal IPs
+    handle @internal_ips {
+        handle @admin_el {
+            reverse_proxy geth:{$HTTP_PORT:8545} {
+                timeout 30s
+            }
+        }
+    }
+
+    # Default: block everything else
     respond 404
 }
