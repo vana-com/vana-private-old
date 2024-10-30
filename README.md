@@ -63,7 +63,7 @@ This guide will help you set up a validator node for the Vana Proof-of-Stake (Po
 
    b. For running a validator node:
 
-   Edit the `.env` file to set `USE_VALIDATOR=true`, set the `DEPOSIT_*` variables appropriately, and set the deposit's private key in `secrets/deposit_private_key.txt`.
+   Edit the `.env` file to set `USE_VALIDATOR=true`, set the `DEPOSIT_*` variables appropriately, and set the wallet's private key for the deposit in `secrets/deposit_private_key.txt`.
 
    If you already have validator keys:
    - Place your keystore files in the `./secrets` directory
