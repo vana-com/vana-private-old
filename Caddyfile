@@ -1,9 +1,65 @@
+{
+    email {$ACME_EMAIL}
+    auto_https enable_redirect
+}
+
 {$DOMAIN:localhost} {
-    handle /eth* {
-        reverse_proxy beacon:{$GRPC_GATEWAY_PORT:3500}
+    tls {
+        # You can also specify custom cert/key:
+        # cert_file /path/to/cert.pem
+        # key_file /path/to/key.pem
     }
 
-    handle /* {
-        reverse_proxy geth:{$HTTP_PORT:8545}
+    @trusted {
+        remote_ip private_ranges
+        remote_ip {$RPC_TRUSTED_IP_RANGES}
+    }
+
+    # Unlimited access for trusted IPs
+    handle @trusted {
+        handle /eth* {
+            reverse_proxy beacon:{$GRPC_GATEWAY_PORT:3500}
+        }
+
+        handle /* {
+            reverse_proxy geth:{$HTTP_PORT:8545}
+        }
+    }
+
+    # Restricted access for everyone else
+    handle {
+        rate_limit {
+            zone global {
+                events 100
+                window 10s
+            }
+        }
+
+        # Safe beacon endpoints
+        handle /eth/v1/beacon/genesis* {
+            reverse_proxy beacon:{$GRPC_GATEWAY_PORT:3500}
+        }
+        handle /eth/v1/beacon/headers* {
+            reverse_proxy beacon:{$GRPC_GATEWAY_PORT:3500}
+        }
+        handle /eth/v1/beacon/states/*/validators {
+            method GET
+            reverse_proxy beacon:{$GRPC_GATEWAY_PORT:3500}
+        }
+        handle /eth/v1/node/health {
+            reverse_proxy beacon:{$GRPC_GATEWAY_PORT:3500}
+        }
+        handle /eth/v1/node/syncing {
+            reverse_proxy beacon:{$GRPC_GATEWAY_PORT:3500}
+        }
+
+        handle /eth/* {
+            respond 404
+        }
+
+        # Execution layer
+        handle /* {
+            reverse_proxy geth:{$HTTP_PORT:8545}
+        }
     }
 }

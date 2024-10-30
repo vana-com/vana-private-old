@@ -588,7 +588,7 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile
+      - ./proxy/${CADDY_CONFIG:-public}.Caddyfile:/etc/caddy/Caddyfile
       - ./data/caddy:/data
       - ./data/caddy/config:/config
       - ./data/caddy/certs:/usr/local/share/ca-certificates
@@ -596,6 +596,8 @@ services:
       - DOMAIN=${DOMAIN:-localhost}
       - HTTP_PORT=${HTTP_PORT:-8545}
       - GRPC_GATEWAY_PORT=${GRPC_GATEWAY_PORT:-3500}
+      - ACME_EMAIL=${ACME_EMAIL}
+      - RPC_TRUSTED_IP_RANGES=${RPC_TRUSTED_IP_RANGES}
     depends_on:
       geth:
         condition: service_started
