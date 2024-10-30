@@ -108,7 +108,7 @@ services:
       - DEPOSIT_CONTRACT_ADDRESS
       - USE_VALIDATOR=${USE_VALIDATOR:-false}
       - INSTANCE_NAME
-      - PUBLIC_KEY
+      - VALIDATOR_PUBLIC_KEY
     command: /vana/container-scripts/check-config.sh
     depends_on:
       geth-init:
@@ -239,9 +239,16 @@ services:
       - --grpc-gateway-port=${GRPC_GATEWAY_PORT:-3500}
       - --p2p-host-ip=${EXTERNAL_IP}
       - --bootstrap-node=${PRYSM_BOOTNODE_1}
-      - --bootstrap-node=${PRYSM_BOOTNODE_2}
-      - --bootstrap-node=${PRYSM_BOOTNODE_3}
-      - --bootstrap-node=${PRYSM_BOOTNODE_4}
+      - --peer=${PRYSM_PEER_1}
+      - --peer=${PRYSM_PEER_2}
+      - --peer=${PRYSM_PEER_3}
+      - --peer=${PRYSM_PEER_4}
+      - --peer=${PRYSM_PEER_5}
+      - --peer=${PRYSM_PEER_6}
+      - --peer=${PRYSM_PEER_7}
+      - --peer=${PRYSM_PEER_8}
+      - --peer=${PRYSM_PEER_9}
+      - --peer=${PRYSM_PEER_10}
       # Add more peers as needed, make sure to add them to .env
       - --p2p-static-id
       - --p2p-priv-key=/vana/consensus/prysm-key.hex
@@ -574,7 +581,7 @@ services:
     environment:
       - STATS_SERVER_URL=${STATS_SERVER_URL}
       - INSTANCE_NAME=${INSTANCE_NAME}
-      - PUBLIC_KEY=${PUBLIC_KEY}
+      - VALIDATOR_PUBLIC_KEY=${VALIDATOR_PUBLIC_KEY}
       - EXECUTION_WS_ENDPOINT=ws://geth:${GETH_WS_PORT:-8546}
       - BEACON_RPC_PROVIDER=http://beacon:${GRPC_GATEWAY_PORT:-3500}
       - WS_SECRET=${WS_SECRET}
