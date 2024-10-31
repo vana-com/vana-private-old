@@ -308,27 +308,38 @@ For more detailed information on Docker Compose commands and options, refer to t
 
 ## Using the API Gateway
 
-The validator node exposes its APIs through a Caddy reverse proxy for secure HTTPS access. By default, it uses `localhost` but you can configure a custom domain in your `.env` file.
+The validator node exposes its APIs through a Caddy reverse proxy for secure HTTPS access. By default, it uses `localhost` but you can configure a custom domain in your `.env` file. The provided Caddyfile configuration is a basic starting point and may need additional security headers and hardening for production use.
 
 ### Domain Setup
 
 If using a custom domain:
 1. Point your domain's DNS to your server's IP address
 2. Ensure ports 80 and 443 are open on your firewall
-3. Set your domain in the `.env` file
+3. Set your domain and email (for Let's Encrypt) in the `.env` file
+
+### API Access Control
+
+The API gateway implements the following access controls:
+
+- Public endpoints:
+  - Execution layer: All JSON-RPC endpoints (POST /)
+  - Consensus layer: Limited set of beacon endpoints including genesis, headers, validator info, and node status
+- Private endpoints (localhost and trusted IPs only):
+  - All other consensus layer endpoints under /eth/*
+  - Configure trusted IPs via RPC_TRUSTED_IP_RANGES in .env
 
 ### Local Testing
 
 For local testing, you can access the APIs using curl with the `-k` flag to skip certificate verification:
 
 ```bash
-# Query beacon node identity
-curl -k -X 'GET' 'https://localhost:443/eth/v1/node/identity' -H 'accept: application/json'
+# Query beacon node identity (public endpoint)
+curl -k -X GET 'https://localhost/eth/v1/node/identity' -H 'accept: application/json'
 
-# Query execution node info
-curl -k -s -X POST -H "Content-Type: application/json" \
+# Query execution node info (public endpoint)
+curl -k -X POST -H "Content-Type: application/json" \
   --data '{"jsonrpc":"2.0","method":"admin_nodeInfo","params":[],"id":1}' \
-  https://localhost:443
+  https://localhost
 ```
 
 ### Installing Local CA Certificate
