@@ -44,6 +44,10 @@
 
     # Trusted IP access
     handle @trusted {
+        handle / {
+            reverse_proxy geth:{$HTTP_PORT:8545}
+        }
+
         handle /eth* {
             reverse_proxy beacon:{$GRPC_GATEWAY_PORT:3500}
         }

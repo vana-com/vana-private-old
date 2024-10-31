@@ -254,6 +254,8 @@ services:
       - --p2p-priv-key=/vana/consensus/prysm-key.hex
       - --suggested-fee-recipient=${WITHDRAWAL_ADDRESS}
       - --slots-per-archive-point=${PRYSM_SLOTS_PER_ARCHIVE_POINT:-512}
+      # Uncomment this to enable this beacon node as a checkpoint sync source
+      # - --enable-debug-rpc-endpoints
     depends_on:
       geth:
         condition: service_started
@@ -323,9 +325,7 @@ services:
     command:
       - --accept-terms-of-use
       - --verbosity=info
-      # TODO: In prior testing, beacon didn't seem to work when ${EXTERNAL_IP} did. Check if this is still the case.
       - --beacon-rpc-provider=beacon:${RPC_PORT:-4000}
-      #- --beacon-rpc-provider=${EXTERNAL_IP}:${RPC_PORT:-4000}
       - --beacon-rest-api-provider=${EXTERNAL_IP}:${RPC_PORT:-4000}
       - --datadir=/vana/validator
       - --wallet-dir=/vana/wallet
