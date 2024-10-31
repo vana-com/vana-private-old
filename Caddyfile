@@ -21,13 +21,15 @@
 
     # Consensus layer public endpoints
     @public_cl {
-        path /eth/v1/beacon/genesis*
-        path /eth/v1/beacon/headers*
-        path /eth/v1/beacon/states/*/validators
-        path /eth/v1/beacon/states/*/finality_checkpoints
-        path /eth/v1/node/health
-        path /eth/v1/node/syncing
-        path /eth/v1/node/identity
+        # path /eth/v1/beacon/genesis*
+        # path /eth/v1/beacon/headers*
+        # path /eth/v1/beacon/states/*/validators
+        # path /eth/v1/beacon/states/*/finality_checkpoints
+        # path /eth/v1/node/health
+        # path /eth/v1/node/syncing
+        # path /eth/v1/node/identity
+        # Forward all CL requests until we have a final list of public endpoints
+        path /eth/*
     }
 
     # Public execution layer endpoints
