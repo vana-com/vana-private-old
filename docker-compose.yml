@@ -401,7 +401,7 @@ services:
     image: alpine:latest
     command: rm -rf /vana/execution/geth
     volumes:
-      - ./data/geth:/vana/execution
+      - ./data/execution:/vana/execution
     profiles: ["delete"]
 
   delete-beacon:
