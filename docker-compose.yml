@@ -613,8 +613,6 @@ services:
       beacon:
         condition: service_started
     profiles: ["node", "validator"]
-    secrets:
-      - deposit_private_key
 
 secrets:
   deposit_private_key:
