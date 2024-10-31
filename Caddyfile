@@ -1,5 +1,5 @@
 {
-    {$EMAIL_DIRECTIVE}
+    {$CADDY_EMAIL_DIRECTIVE}
     # debug  # Uncomment to enable debug mode
 }
 
