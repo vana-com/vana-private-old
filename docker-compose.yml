@@ -590,15 +590,17 @@ services:
       - monitoring
 
   caddy:
+    <<: [*default-logging, *default-restart]
     image: caddy:2
-    ports:
-      - "80:80"
-      - "443:443"
+    container_name: caddy
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile
       - ./data/caddy:/data
       - ./data/caddy/config:/config
       - ./data/caddy/certs:/usr/local/share/ca-certificates
+    ports:
+      - "80:80"
+      - "443:443"
     environment:
       - DOMAIN=${DOMAIN:-localhost}
       - HTTP_PORT=${HTTP_PORT:-8545}
