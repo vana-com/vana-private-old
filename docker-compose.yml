@@ -238,17 +238,20 @@ services:
       - --grpc-gateway-host=0.0.0.0
       - --grpc-gateway-port=${GRPC_GATEWAY_PORT:-3500}
       - --p2p-host-ip=${EXTERNAL_IP}
-      - --bootstrap-node=${PRYSM_BOOTNODE_1}
+      # Bootnodes are unused for now
+      #- --bootstrap-node=${PRYSM_BOOTNODE_1}
       - --peer=${PRYSM_PEER_1}
       - --peer=${PRYSM_PEER_2}
       - --peer=${PRYSM_PEER_3}
       - --peer=${PRYSM_PEER_4}
       - --peer=${PRYSM_PEER_5}
-      - --peer=${PRYSM_PEER_6}
-      - --peer=${PRYSM_PEER_7}
-      - --peer=${PRYSM_PEER_8}
-      - --peer=${PRYSM_PEER_9}
-      - --peer=${PRYSM_PEER_10}
+      # Only enable peers 6-11 for core validator nodes and relay nodes
+      # - --peer=${PRYSM_PEER_6}
+      # - --peer=${PRYSM_PEER_7}
+      # - --peer=${PRYSM_PEER_8}
+      # - --peer=${PRYSM_PEER_9}
+      # - --peer=${PRYSM_PEER_10}
+      # - --peer=${PRYSM_PEER_11}
       # Add more peers as needed, make sure to add them to .env
       - --p2p-static-id
       - --p2p-priv-key=/vana/consensus/prysm-key.hex
