@@ -249,6 +249,11 @@ services:
       - --peer=${PRYSM_PEER_8}
       - --peer=${PRYSM_PEER_9}
       - --peer=${PRYSM_PEER_10}
+      - --peer=${RELAY_PEER_1}
+      - --peer=${RELAY_PEER_2}
+      - --peer=${RELAY_PEER_3}
+      - --peer=${RELAY_PEER_4}
+      - --peer=${RELAY_PEER_5}
       # Add more peers as needed, make sure to add them to .env
       - --p2p-static-id
       - --p2p-priv-key=/vana/consensus/prysm-key.hex
