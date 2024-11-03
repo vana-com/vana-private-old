@@ -461,3 +461,25 @@ You'll be prompted to select a backup file to restore from.
 - Remember your password and separately backup your keystore(s)!
 - Performing backups while services are running risks corrupting the backup, with the exception of the validator backup.
 - After restoring data, you may need to resync your node to catch up with the latest state of the network.
+
+### CORS Configuration
+
+The API gateway includes CORS (Cross-Origin Resource Sharing) headers to control which domains can access the API. By default, it allows all origins (`*`) but this can be restricted:
+
+1. Set allowed origins in your `.env` file:
+```bash
+# Allow specific origins (comma-separated)
+CORS_ALLOWED_ORIGINS=https://app.example.com,https://admin.example.com
+
+# Or allow all origins (default)
+CORS_ALLOWED_ORIGINS=*
+```
+
+2. When setting specific origins:
+   - Credentials will be allowed (`Access-Control-Allow-Credentials: true`)
+   - Preflight requests are automatically handled
+   - Methods are limited to GET, POST, OPTIONS
+   - Only Content-Type header is allowed
+   - Preflight responses are cached for 24 hours
+
+> **Security Note**: Using `*` for CORS_ALLOWED_ORIGINS is acceptable for public RPC nodes but not recommended for nodes handling sensitive operations. Always restrict origins in production environments.

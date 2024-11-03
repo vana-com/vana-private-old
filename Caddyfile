@@ -6,6 +6,26 @@
 {$DOMAIN:localhost} {
     header -Server
 
+    # Add default CORS headers for public endpoints
+    header {
+        Access-Control-Allow-Methods "GET, POST, OPTIONS"
+        Access-Control-Allow-Headers "Content-Type"
+        Access-Control-Max-Age "86400"
+        # Restrict origins by default
+        Access-Control-Allow-Origin "{$CORS_ALLOWED_ORIGINS:*}"
+        # Allow credentials if specific origins are set
+        ?Access-Control-Allow-Credentials "true"
+        defer
+    }
+
+    # Handle preflight requests
+    @options {
+        method OPTIONS
+    }
+    handle @options {
+        respond 204
+    }
+
     @trusted {
         remote_ip private_ranges
         remote_ip {$RPC_TRUSTED_IP_RANGES}
