@@ -159,7 +159,7 @@ services:
       - --http.port=${HTTP_PORT:-8545}
       - --http.api=eth,net,web3
       # Only enable personal and admin APIs if you know what you're doing. It's not possible to limit access to just some of them via Caddy.
-      #- --http.api=eth,net,web3,personal,admin,txpool
+      #- --http.api=eth,net,web3,txpool,personal,admin
       # 5x the default
       - --rpc.batch-request-limit=${GETH_RPC_BATCH_REQUEST_LIMIT:-5000}
       # 5x the default
