@@ -384,13 +384,45 @@ If you encounter SSL-related issues:
 2. Verify your domain points to your server's IP address
 3. Confirm ports 80 and 443 aren't used by other services
 4. Check your firewall allows traffic on ports 80 and 443
+
 ## Backup and Restore
 
-The setup includes services for backing up and restoring your node data. These snapshots can be helpful for quickly syncing or migrating your node to a new machine. Geth and Prysm snapshots are also available for download from the [Vana Snapshot service](https://console.cloud.google.com/storage/browser/vana-snapshots;tab=objects?prefix=&forceOnObjectsSortingFiltering=false).
+The setup includes services for backing up and restoring your node data. You can also use [provided snapshots](https://console.cloud.google.com/storage/browser/vana-snapshots;tab=objects?prefix=&forceOnObjectsSortingFiltering=false) for faster sync.
 
-### Backups
+### Using Provided Snapshots
 
-To create and restore backups of your node data:
+To quickly sync your node using provided snapshots:
+
+1. Download and verify snapshots:
+   ```bash
+   # Download snapshot files (replace DATE with actual date, e.g., 20241104)
+   wget https://storage.googleapis.com/vana-snapshots/DATE/geth-chaindata-DATE.tar.zst{,.md5}
+   wget https://storage.googleapis.com/vana-snapshots/DATE/beacon-chaindata-DATE.tar.zst{,.md5}
+
+   # Verify checksums
+   md5sum -c *.md5
+   ```
+
+2. Extract snapshots to the backups directory:
+   ```bash
+   zstd -d geth-chaindata-DATE.tar.zst -o "backups/geth_backup_DATE.dat"
+   zstd -d beacon-chaindata-DATE.tar.zst -o "backups/beaconchain_DATE.db"
+   ```
+
+3. Restore the snapshots:
+   ```bash
+   # For Geth (requires interactive terminal)
+   docker compose run -it --rm geth-restore
+
+   # For Beacon chain (requires interactive terminal)
+   docker compose run -it --rm beacon-restore
+   ```
+
+> **Note**: make sure you trust the snapshot provider and verify the checksums before restoring!
+
+### Manual Backups
+
+To create and restore manual backups of your node data:
 
 #### Geth (Execution Client) Backup
 
