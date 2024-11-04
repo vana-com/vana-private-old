@@ -389,7 +389,6 @@ services:
 
   validator-exit:
     <<: *default-logging
-    #image: wealdtech/ethdo
     image: gcr.io/prysmaticlabs/prysm/cmd/prysmctl:${PRYSM_VERSION:-latest}
     container_name: validator-exit
     volumes:
