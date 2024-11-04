@@ -63,7 +63,7 @@ This guide will help you set up a validator node for the Vana Proof-of-Stake (Po
 
    b. For running a validator node:
 
-   Edit the `.env` file to set `USE_VALIDATOR=true` and set the `DEPOSIT_*` variables appropriately.
+   Edit the `.env` file to set `USE_VALIDATOR=true`, set the `DEPOSIT_*` variables appropriately, and set the wallet's private key for the deposit in `secrets/deposit_private_key.txt`.
 
    If you already have validator keys:
    - Place your keystore files in the `./secrets` directory
@@ -187,12 +187,24 @@ Different profiles are available for various operations:
 - `validator`: Run validator-specific services
 - `manual`: For manual operations like key generation
 - `delete`: Delete data, e.g. to reset the chain so you can re-sync
+- `public`: Expose APIs securely via Caddy reverse proxy (ports 80/443)
 
 You can combine profiles as needed. Whenever a service depends on another service, you must include the dependent profile.
 
  For example, to start the node, you must include the `init` and `node` profiles:
 ```bash
 docker compose --profile init --profile node up -d
+```
+
+For example, to run the node with public API access:
+```bash
+docker compose --profile init --profile node --profile public up -d
+```
+
+Or to start/stop just the API gateway:
+```bash
+docker compose --profile init --profile node --profile public up -d caddy
+docker compose --profile init --profile node --profile public down caddy
 ```
 
 ### Key Management
@@ -218,7 +230,7 @@ docker compose --profile delete run --rm delete-all
 To delete execution or consensus layer data:
 ```bash
 docker compose --profile delete run --rm delete-geth
-docker compose --profile delete run --rm delete-prysm
+docker compose --profile delete run --rm delete-beacon
 ```
 
 ### Configuration Check
@@ -293,3 +305,159 @@ After generating validator keys and before starting your validator, you need to 
 4. Wait for the transactions to be confirmed on the network before proceeding to start your validator.
 
 For more detailed information on Docker Compose commands and options, refer to the [official Docker Compose documentation](https://docs.docker.com/compose/reference/).
+
+## Using the API Gateway
+
+The validator node exposes its APIs through a Caddy reverse proxy for secure HTTPS access. By default, it uses `localhost` but you can configure a custom domain in your `.env` file. The provided Caddyfile configuration is a basic starting point and may need additional security headers and hardening for production use.
+
+### Domain Setup
+
+If using a custom domain:
+1. Point your domain's DNS to your server's IP address
+2. Ensure ports 80 and 443 are open on your firewall
+3. Set your domain and email (for Let's Encrypt) in the `.env` file
+
+### API Access Control
+
+The API gateway implements the following access controls:
+
+- Public endpoints:
+  - Execution layer: All JSON-RPC endpoints (POST /)
+  - Consensus layer: Limited set of beacon endpoints including genesis, headers, validator info, and node status
+- Private endpoints (localhost and trusted IPs only):
+  - All other consensus layer endpoints under /eth/*
+  - Configure trusted IPs via RPC_TRUSTED_IP_RANGES in .env
+
+### Local Testing
+
+For local testing, you can access the APIs using curl with the `-k` flag to skip certificate verification:
+
+```bash
+# Query beacon node identity (public endpoint)
+curl -k -X GET 'https://localhost/eth/v1/node/identity' -H 'accept: application/json'
+
+# Query execution node info (public endpoint)
+curl -k -X POST -H "Content-Type: application/json" \
+  --data '{"jsonrpc":"2.0","method":"admin_nodeInfo","params":[],"id":1}' \
+  https://localhost
+```
+
+### Installing Local CA Certificate
+
+You can also install Caddy's root CA certificate on your host machine:
+
+Linux:
+```bash
+docker compose cp \
+    caddy:/data/caddy/pki/authorities/local/root.crt \
+    /usr/local/share/ca-certificates/root.crt \
+  && sudo update-ca-certificates
+```
+
+macOS:
+```bash
+docker compose cp \
+    caddy:/data/caddy/pki/authorities/local/root.crt \
+    /tmp/root.crt \
+  && sudo security add-trusted-cert -d -r trustRoot \
+    -k /Library/Keychains/System.keychain /tmp/root.crt
+```
+
+Windows:
+```bash
+docker compose cp \
+    caddy:/data/caddy/pki/authorities/local/root.crt \
+    %TEMP%/root.crt \
+  && certutil -addstore -f "ROOT" %TEMP%/root.crt
+```
+
+Note: Many modern browsers maintain their own certificate trust stores. You may need to manually import the root.crt file in your browser's security settings.
+
+### Troubleshooting SSL
+
+If you encounter SSL-related issues:
+
+1. Check Caddy logs:
+   ```bash
+   docker compose logs caddy
+   ```
+2. Verify your domain points to your server's IP address
+3. Confirm ports 80 and 443 aren't used by other services
+4. Check your firewall allows traffic on ports 80 and 443
+## Backup and Restore
+
+The setup includes services for backing up and restoring your node data. These snapshots can be helpful for quickly syncing or migrating your node to a new machine. Geth and Prysm snapshots are also available for download from the [Vana Snapshot service](https://console.cloud.google.com/storage/browser/vana-snapshots;tab=objects?prefix=&forceOnObjectsSortingFiltering=false).
+
+### Backups
+
+To create and restore backups of your node data:
+
+#### Geth (Execution Client) Backup
+
+To perform a backup of your Geth data, ensure that the geth service is stopped, then run:
+
+```bash
+docker compose --profile backup run --rm geth-backup
+```
+
+This will create a timestamped backup file in the ./backups directory.
+
+#### Beacon Chain Backup
+
+To perform a backup of your Beacon Chain data, ensure that the beacon service is stopped, then run:
+
+```bash
+docker compose --profile backup run --rm beacon-backup
+```
+
+This creates a timestamped copy of the Beacon Chain database in the ./backups directory.
+
+#### Validator Backup
+
+The validator backup can be triggered while the validator service is running:
+
+```bash
+docker compose --profile backup run --rm validator-backup
+```
+
+This sends a request to the validator service to create a backup, which will be stored in the ./backups directory.
+
+### Restore
+
+Before performing any restore operations, ensure that the respective services are stopped.
+
+#### Geth (Execution Client) Restore
+
+To restore Geth data:
+
+```bash
+docker compose --profile restore run --rm geth-restore
+```
+
+You'll be prompted to select a backup file to restore from.
+
+#### Beacon Chain Restore
+
+To restore Beacon Chain data:
+
+```bash
+docker compose --profile restore run --rm beacon-restore
+```
+
+You'll be prompted to select a backup file to restore from.
+
+#### Validator Restore
+
+To restore Validator data:
+
+```bash
+docker compose --profile restore run --rm validator-restore
+```
+
+You'll be prompted to select a backup file to restore from.
+
+### Important Notes
+
+- Remember your password and separately backup your keystore(s)!
+- Performing backups while services are running risks corrupting the backup, with the exception of the validator backup.
+- After restoring data, you may need to resync your node to catch up with the latest state of the network.

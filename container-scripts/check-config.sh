@@ -1,8 +1,8 @@
 #!/bin/sh
 
 # Check NETWORK
-if [ "$NETWORK" != "moksha" ] && [ "$NETWORK" != "mainnet" ]; then
-  echo "Error: Invalid NETWORK '$NETWORK', must be either 'moksha' or 'mainnet'"
+if [ "$NETWORK" != "moksha" ] && [ "$NETWORK" != "maya" ] && [ "$NETWORK" != "mainnet" ]; then
+  echo "Error: Invalid NETWORK '$NETWORK', must be either 'moksha' or 'maya' or 'mainnet'"
   exit 1
 fi
 
@@ -106,6 +106,24 @@ if [ "$USE_VALIDATOR" = "true" ]; then
   fi
 
   echo "DEPOSIT_CONTRACT_ADDRESS check passed"
+
+  # Check VALIDATOR_PUBLIC_KEY
+  if [ -z "$VALIDATOR_PUBLIC_KEY" ] || [ "$VALIDATOR_PUBLIC_KEY" = "0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000" ]; then
+    echo "Error: VALIDATOR_PUBLIC_KEY is not set or is still the default value."
+    echo "Please set a valid validator public key in your .env file."
+    exit 1
+  fi
+
+  echo "VALIDATOR_PUBLIC_KEY check passed"
+
+  # Check INSTANCE_NAME
+  if [ -z "$INSTANCE_NAME" ] || [ "$INSTANCE_NAME" = "Example Validator" ]; then
+    echo "Error: INSTANCE_NAME is not set or is still the default value."
+    echo "Please set a unique instance name in your .env file."
+    exit 1
+  fi
+
+  echo "INSTANCE_NAME check passed"
 else
   echo "Skipping validator-specific checks..."
 fi

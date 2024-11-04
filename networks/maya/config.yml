@@ -1,0 +1,126 @@
+PRESET_BASE: mainnet
+CONFIG_NAME: vana
+
+# Same as Ethereum Mainnet
+# ---------------------------------------------------------------
+# 2**8 (= 256) epochs ~205 minutes
+MIN_VALIDATOR_WITHDRAWABILITY_DELAY: 256
+# 2**8 (= 256) epochs ~205 minutes
+SHARD_COMMITTEE_PERIOD: 256
+# 2**2 (= 4)
+INACTIVITY_SCORE_BIAS: 4
+# 2**4 (= 16)
+INACTIVITY_SCORE_RECOVERY_RATE: 16
+
+# Transition
+# ---------------------------------------------------------------
+TERMINAL_TOTAL_DIFFICULTY: 20000000
+
+# Genesis
+# ---------------------------------------------------------------
+MIN_GENESIS_ACTIVE_VALIDATOR_COUNT: 1
+MIN_GENESIS_TIME: 0
+GENESIS_FORK_VERSION: 0x20000089
+# 120 seconds (2 minutes)
+GENESIS_DELAY: 120
+SECONDS_PER_ETH1_BLOCK: 6
+
+# Forking
+# ---------------------------------------------------------------
+# Altair
+ALTAIR_FORK_EPOCH: 1
+ALTAIR_FORK_VERSION: 0x20000090
+
+# Bellatrix (Merge)
+BELLATRIX_FORK_EPOCH: 2
+BELLATRIX_FORK_VERSION: 0x20000091
+
+# Capella
+# Transition: 60 minutes * 60 seconds / 6 seconds per slot / 8 slots per epoch (=75 epochs)
+# Transition + (28 minutes * 60 seconds / 6 seconds per slot / 8 slots per epoch (= 35 epochs))
+CAPELLA_FORK_EPOCH: 1750
+CAPELLA_FORK_VERSION: 0x20000092
+
+# # Deneb
+DENEB_FORK_EPOCH: 1750
+DENEB_FORK_VERSION: 0x20000093
+
+# Future forks
+# Electra
+ELECTRA_FORK_VERSION: 0x20000094
+ELECTRA_FORK_EPOCH: 18446744073709551615
+# # [New in Electra:EIP7251]
+# # 1 * 17500 * 10**9 (= 17,500,000,000,000)
+# MIN_PER_EPOCH_CHURN_LIMIT_ELECTRA: 17500000000000
+# # 2 * 35000 * 10**9 (= 70,000,000,000,000)
+# MAX_PER_EPOCH_ACTIVATION_EXIT_CHURN_LIMIT: 70000000000000
+
+# # EIP7594 - Peerdas
+# EIP7594_FORK_VERSION: 0x60000039
+# EIP7594_FORK_EPOCH: 18446744073709551615
+
+# # WHISK
+# WHISK_FORK_VERSION: 0x08000000  # temporary stub
+# WHISK_FORK_EPOCH: 18446744073709551615
+# # EIP7732
+# EIP7732_FORK_VERSION: 0x09000000  # temporary stub
+# EIP7732_FORK_EPOCH: 18446744073709551615
+
+# Misc
+# ---------------------------------------------------------------
+MAX_COMMITTEES_PER_SLOT: 4
+TARGET_COMMITTEE_SIZE: 8
+MAX_VALIDATORS_PER_COMMITTEE: 20
+
+# Time parameters
+# ---------------------------------------------------------------
+SECONDS_PER_SLOT: 6
+SLOTS_PER_EPOCH: 8
+EPOCHS_PER_SYNC_COMMITTEE_PERIOD: 8
+ETH1_FOLLOW_DISTANCE: 32
+
+# Execution
+# ---------------------------------------------------------------
+# MAX_WITHDRAWALS_PER_PAYLOAD: 17  # temporarily disabled
+
+# Withdrawals
+# ---------------------------------------------------------------
+# 2**5 (= 32) validators
+# MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP: 32  # temporarily disabled
+
+# Validator cycle
+# ---------------------------------------------------------------
+MIN_PER_EPOCH_CHURN_LIMIT: 2
+# 21 validators * 2 can churn per epoch = 42
+CHURN_LIMIT_QUOTIENT: 42
+# 17500 * 10**9 (= 17,500,000,000,000) Gwei
+EJECTION_BALANCE: 17500000000000
+
+# Deposit contract (PoS)
+# ---------------------------------------------------------------
+DEPOSIT_CHAIN_ID: 14808
+DEPOSIT_NETWORK_ID: 14808
+DEPOSIT_CONTRACT_ADDRESS: 0x17BbE91c315Bf14f38F6D35052a827cadfFe184e
+
+# Gwei values
+# ---------------------------------------------------------------
+# 1000 * 10**9 (= 1,000,000,000,000) Gwei
+MIN_DEPOSIT_AMOUNT: 1000000000000
+# 35000 * 10**9 (= 35,000,000,000,000) Gwei
+MIN_ACTIVATION_BALANCE: 35000000000000  # mainly for Electra, but latest Prysm uses it to determine if a validator is active in Deneb
+# 35000 * 10**9 (= 35,000,000,000,000) Gwei
+MAX_EFFECTIVE_BALANCE: 35000000000000
+# 1000 * 10**9 (= 1,000,000,000,000) Gwei
+EFFECTIVE_BALANCE_INCREMENT: 1000000000000
+
+# Reward and penalty quotients
+# ---------------------------------------------------------------
+BASE_REWARD_FACTOR: 21
+
+# 2**24 (= 16,777,216) initial reference from Ethereum...
+# 2**24 * 8 (~= 134,217,728) to decrease the penalty by 8x to account for epochs being 8x faster
+INACTIVITY_PENALTY_QUOTIENT_BELLATRIX: 134217728
+
+# MAXIMUM_EFFECTIVE_BALANCE / MIN_SLASHING_PENALTY_QUOTIENT
+# 35,000 / 35 = 1000 VANA token slashing penalty
+MIN_SLASHING_PENALTY_QUOTIENT_BELLATRIX: 35

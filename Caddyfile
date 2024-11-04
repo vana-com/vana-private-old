@@ -1,0 +1,58 @@
+{
+    {$CADDY_EMAIL_DIRECTIVE}
+    # debug  # Uncomment to enable debug mode
+}
+
+{$DOMAIN:localhost} {
+    header -Server
+
+    @trusted {
+        remote_ip private_ranges
+        remote_ip {$RPC_TRUSTED_IP_RANGES}
+    }
+
+    # Execution layer public endpoints
+    @public_el {
+        method POST
+        header Content-Type application/json
+        # Forward all EL requests. In a perfect world, we could filter on the method in the request body, but alas.
+        path /
+    }
+
+    # Consensus layer public endpoints
+    @public_cl {
+        # path /eth/v1/beacon/genesis*
+        # path /eth/v1/beacon/headers*
+        # path /eth/v1/beacon/states/*/validators
+        # path /eth/v1/beacon/states/*/finality_checkpoints
+        # path /eth/v1/node/health
+        # path /eth/v1/node/syncing
+        # path /eth/v1/node/identity
+        # Forward all CL requests until we have a final list of public endpoints
+        path /eth/*
+    }
+
+    # Public execution layer endpoints
+    handle @public_el {
+        reverse_proxy geth:{$HTTP_PORT:8545}
+    }
+
+    # Public consensus layer endpoints
+    handle @public_cl {
+        reverse_proxy beacon:{$GRPC_GATEWAY_PORT:3500}
+    }
+
+    # Trusted IP access
+    handle @trusted {
+        handle / {
+            reverse_proxy geth:{$HTTP_PORT:8545}
+        }
+
+        handle /eth* {
+            reverse_proxy beacon:{$GRPC_GATEWAY_PORT:3500}
+        }
+    }
+
+    # Default: block unhandled requests
+    respond 404
+}
