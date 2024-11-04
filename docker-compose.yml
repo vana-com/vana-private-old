@@ -387,6 +387,30 @@ services:
     secrets:
       - deposit_private_key
 
+  validator-exit:
+    <<: *default-logging
+    #image: wealdtech/ethdo
+    image: gcr.io/prysmaticlabs/prysm/cmd/prysmctl:${PRYSM_VERSION:-latest}
+    container_name: validator-exit
+    volumes:
+      - ./data/validator/wallet:/vana/wallet
+    command:
+      - validator
+      - exit
+      - --accept-terms-of-use
+      - --wallet-dir=/vana/wallet
+      - --wallet-password-file=/run/secrets/wallet_password
+      - --account-password-file=/run/secrets/account_password
+      - --force-exit
+      - --beacon-rpc-provider=beacon:${RPC_PORT:-4000}
+    depends_on:
+      beacon:
+        condition: service_started
+    profiles: ["validator"]
+    secrets:
+      - wallet_password
+      - account_password
+
   # Cleanup services
   delete-all:
     <<: *default-logging

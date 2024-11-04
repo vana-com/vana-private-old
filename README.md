@@ -105,6 +105,14 @@ This guide will help you set up a validator node for the Vana Proof-of-Stake (Po
    docker compose logs check-config
    ```
 
+## Validator Voluntary Exit
+
+You can voluntarily exit your validator:
+```bash
+docker compose --profile init --profile validator run --rm validator-exit
+```
+The service requires `account_password.txt` and `wallet_password.txt` in the `secrets` folder.
+
 ## Configuration
 
 ### Environment Variables
