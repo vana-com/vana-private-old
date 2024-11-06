@@ -6,6 +6,26 @@
 {$DOMAIN:localhost} {
     header -Server
 
+    # Add default CORS headers for public endpoints
+    header {
+        Access-Control-Allow-Methods "GET, POST, OPTIONS"
+        Access-Control-Allow-Headers "Content-Type"
+        Access-Control-Max-Age "86400"
+        # Restrict origins by default
+        Access-Control-Allow-Origin "{$CORS_ALLOWED_ORIGINS:*}"
+        # Allow credentials if specific origins are set
+        ?Access-Control-Allow-Credentials "true"
+        defer
+    }
+
+    # Handle preflight requests
+    @options {
+        method OPTIONS
+    }
+    handle @options {
+        respond 204
+    }
+
     @trusted {
         remote_ip private_ranges
         remote_ip {$RPC_TRUSTED_IP_RANGES}
@@ -13,8 +33,8 @@
 
     # Execution layer public endpoints
     @public_el {
-        method POST
-        header Content-Type application/json
+        method GET POST  # GET is required for WebSocket connections
+        # header Content-Type application/json  # Not required for WebSocket connections
         # Forward all EL requests. In a perfect world, we could filter on the method in the request body, but alas.
         path /
     }
@@ -32,8 +52,20 @@
         path /eth/*
     }
 
+    # WebSocket upgrade detection
+    @websocket {
+        header Connection *Upgrade*
+        header Upgrade websocket
+    }
+
     # Public execution layer endpoints
     handle @public_el {
+        # Handle WebSocket connections
+        handle @websocket {
+            reverse_proxy geth:{$GETH_WS_PORT:8546}
+        }
+
+        # Handle regular HTTP connections
         reverse_proxy geth:{$HTTP_PORT:8545}
     }
 
@@ -45,6 +77,12 @@
     # Trusted IP access
     handle @trusted {
         handle / {
+            # Handle WebSocket connections for trusted IPs
+            handle @websocket {
+                reverse_proxy geth:{$GETH_WS_PORT:8546}
+            }
+
+            # Handle regular HTTP connections for trusted IPs
             reverse_proxy geth:{$HTTP_PORT:8545}
         }
 

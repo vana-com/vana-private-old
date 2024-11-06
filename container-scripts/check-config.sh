@@ -27,6 +27,14 @@ echo "JWT secret check passed"
 if [ "$USE_VALIDATOR" = "true" ]; then
   echo "Performing validator-specific checks..."
 
+  # Check if secrets exist and are accessible
+  for secret in "account_password" "wallet_password" "deposit_private_key"; do
+    if [ ! -f "/run/secrets/$secret" ]; then
+      echo "Error: Required secret 'secrets/$secret.txt' not found. Required for validator operations."
+      exit 1
+    fi
+  done
+
   # Check if WITHDRAWAL_ADDRESS is set and not the default value
   if [ -z "$WITHDRAWAL_ADDRESS" ] || [ "$WITHDRAWAL_ADDRESS" = "0x0000000000000000000000000000000000000000" ]; then
       echo "Error: WITHDRAWAL_ADDRESS is not set or is still the default value."
@@ -45,49 +53,7 @@ if [ "$USE_VALIDATOR" = "true" ]; then
   #   echo "Error: Validator keys not imported. Wallet directory is empty. See README.md for instructions on how to import validator keys."
   #   exit 1
   # fi
-
-  echo "Validator keys and wallet check passed"
-
-  # Check if account password file exists
-  if [ ! -f /vana/secrets/account_password.txt ]; then
-    echo "Error: Account password file not found at /vana/secrets/account_password.txt. See README.md for instructions on how to set up validator keys and password."
-    exit 1
-  fi
-
-  echo "Account password file check passed"
-
-  # Check if wallet password file exists
-  if [ ! -f /vana/secrets/wallet_password.txt ]; then
-    echo "Error: Wallet password file not found at /vana/secrets/wallet_password.txt. See README.md for instructions on how to set up validator keys and password."
-    exit 1
-  fi
-
-  echo "Wallet password file check passed"
-
-  # Check if account password file exists
-  if [ ! -f /vana/secrets/account_password.txt ]; then
-    echo "Error: Account password file not found at /vana/secrets/account_password.txt. See README.md for instructions on how to set up validator keys and password."
-    exit 1
-  fi
-
-  echo "Account password file check passed"
-
-  # Check if wallet password file exists
-  if [ ! -f /vana/secrets/wallet_password.txt ]; then
-    echo "Error: Wallet password file not found at /vana/secrets/wallet_password.txt. See README.md for instructions on how to set up validator keys and password."
-    exit 1
-  fi
-
-  echo "Wallet password file check passed"
-
-  # Check DEPOSIT_PRIVATE_KEY
-  if [ ! -s /run/secrets/deposit_private_key ] || [ "$(cat /run/secrets/deposit_private_key)" = "0000000000000000000000000000000000000000000000000000000000000000" ]; then
-      echo "Error: Deposit private key is not set, empty, or still the default value."
-      echo "Please set a valid private key for deposits in your secrets file."
-      exit 1
-  fi
-
-  echo "Deposit private key check passed"
+  echo "Validator keys and secret file checks passed"
 
   # Check DEPOSIT_RPC_URL
   if [ -z "$DEPOSIT_RPC_URL" ]; then
