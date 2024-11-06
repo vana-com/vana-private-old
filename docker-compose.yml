@@ -405,7 +405,7 @@ services:
     depends_on:
       beacon:
         condition: service_started
-    profiles: ["validator"]
+    profiles: ["manual"]
     secrets:
       - wallet_password
       - account_password

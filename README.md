@@ -107,11 +107,15 @@ This guide will help you set up a validator node for the Vana Proof-of-Stake (Po
 
 ## Validator Voluntary Exit
 
-You can voluntarily exit your validator:
+To voluntarily exit your validator, ensure your beacon node is fully synced and run:
+
 ```bash
-docker compose --profile init --profile validator run --rm validator-exit
+docker compose --profile init --profile manual run --rm validator-exit
 ```
-The service requires `account_password.txt` and `wallet_password.txt` in the `secrets` folder.
+
+This service requires `account_password.txt` and `wallet_password.txt` in the `secrets` folder.
+
+> **Important**: Exiting your validator is permanent and cannot be reversed. This only signals your intent to exit - it does not withdraw funds. For withdrawal functionality, see the [withdrawal documentation](https://docs.prylabs.network/docs/wallet/exiting-a-validator).
 
 ## Configuration
 
