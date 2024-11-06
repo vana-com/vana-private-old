@@ -121,6 +121,18 @@ Once your node is fully synced, follow these steps to set up and run a validator
    > docker compose logs check-config-validator
    > ```
 
+### Validator Voluntary Exit
+
+To voluntarily exit your validator, ensure your beacon node is fully synced and run:
+
+```bash
+docker compose --profile init --profile manual run --rm validator-exit
+```
+
+This service requires `account_password.txt` and `wallet_password.txt` in the `secrets` folder.
+
+> **Important**: Exiting your validator is permanent and cannot be reversed. This only signals your intent to exit - it does not withdraw funds. For withdrawal functionality, see the [withdrawal documentation](https://docs.prylabs.network/docs/wallet/exiting-a-validator).
+
 ## Validator Approval Process
 
 Before proceeding with setup, you must get your validator whitelisted:
