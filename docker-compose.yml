@@ -93,10 +93,10 @@ services:
       fi'
     profiles: ["init"]
 
-  check-config:
+  check-config-validator:
     <<: *default-logging
     image: alpine:latest
-    container_name: check-config
+    container_name: check-config-validator
     volumes:
       - .:/vana:ro
       # Uncomment this when we have a better way to manage keys apart from secrets/.
@@ -106,7 +106,7 @@ services:
       - WITHDRAWAL_ADDRESS
       - DEPOSIT_RPC_URL
       - DEPOSIT_CONTRACT_ADDRESS
-      - USE_VALIDATOR=${USE_VALIDATOR:-false}
+      - USE_VALIDATOR=true
       - INSTANCE_NAME
       - VALIDATOR_PUBLIC_KEY
     command: /vana/container-scripts/check-config.sh
@@ -122,6 +122,25 @@ services:
       - account_password
       - deposit_private_key
       - wallet_password
+
+  check-config-node:
+    <<: *default-logging
+    image: alpine:latest
+    container_name: check-config-node
+    volumes:
+      - .:/vana:ro
+      # Uncomment this when we have a better way to manage keys apart from secrets/.
+      # - /vana/secrets  # Create an empty volume, effectively hiding ./secrets
+    environment:
+      - NETWORK
+      - USE_VALIDATOR=false
+    command: /vana/container-scripts/check-config.sh
+    depends_on:
+      geth-init:
+        condition: service_completed_successfully
+      jwt-gen:
+        condition: service_completed_successfully
+    profiles: ["node"]
 
   # Main node services
   geth:
@@ -180,11 +199,11 @@ services:
       - --ws.origins=*
       - --nodekey=/root/.ethereum/bootnode.key
     depends_on:
+      check-config-node:
+        condition: service_completed_successfully
       geth-init:
         condition: service_completed_successfully
       jwt-gen:
-        condition: service_completed_successfully
-      check-config:
         condition: service_completed_successfully
       bootnode-init:
         condition: service_completed_successfully
@@ -267,7 +286,7 @@ services:
         condition: service_completed_successfully
       jwt-gen:
         condition: service_completed_successfully
-      check-config:
+      check-config-node:
         condition: service_completed_successfully
     profiles: ["node", "validator"]
 
@@ -345,7 +364,7 @@ services:
         condition: service_started
       validator-import:
         condition: service_completed_successfully
-      check-config:
+      check-config-validator:
         condition: service_completed_successfully
     secrets:
       - wallet_password
@@ -380,13 +399,36 @@ services:
             --rpc-url $$DEPOSIT_RPC_URL
         done
     depends_on:
-      check-config:
+      check-config-validator:
         condition: service_completed_successfully
       validator-import:
         condition: service_completed_successfully
     profiles: ["manual"]
     secrets:
       - deposit_private_key
+
+  validator-exit:
+    <<: *default-logging
+    image: gcr.io/prysmaticlabs/prysm/cmd/prysmctl:${PRYSM_VERSION:-latest}
+    container_name: validator-exit
+    volumes:
+      - ./data/validator/wallet:/vana/wallet
+    command:
+      - validator
+      - exit
+      - --accept-terms-of-use
+      - --wallet-dir=/vana/wallet
+      - --wallet-password-file=/run/secrets/wallet_password
+      - --account-password-file=/run/secrets/account_password
+      - --force-exit
+      - --beacon-rpc-provider=beacon:${RPC_PORT:-4000}
+    depends_on:
+      beacon:
+        condition: service_started
+    profiles: ["manual"]
+    secrets:
+      - wallet_password
+      - account_password
 
   # Cleanup services
   delete-all:

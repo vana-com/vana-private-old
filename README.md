@@ -31,79 +31,151 @@ This guide will help you set up a validator node for the Vana Proof-of-Stake (Po
    # Edit .env with your preferred text editor
    ```
 
-> **Checkpoint Sync Recommended**
->
-> To avoid very long sync times, it's highly recommended to use checkpoint sync.
-> In your `.env` file, set the following variables:
->
-> ```
-> TRUSTED_BEACON_NODE_URL=http://archive.vana.org:3500  # Use appropriate URL for your network
-> WEAK_SUBJECTIVITY_CHECKPOINT=0x0000000000000000000000000000000000000000000000000000000000000000:0  # Replace with actual checkpoint
-> ```
-> WEAK_SUBJECTIVITY_CHECKPOINT is a block root:epoch number of the checkpoint that you want to sync to.
->
-> Then, in the `docker-compose.yml` file, uncomment these lines in the `beacon` service:
->
-> ```yaml
-> - --weak-subjectivity-checkpoint=${WEAK_SUBJECTIVITY_CHECKPOINT}
-> - --checkpoint-sync-url=${TRUSTED_BEACON_NODE_URL}  # not strictly necessary, but recommended for safety
-> - --genesis-beacon-api-url=${TRUSTED_BEACON_NODE_URL}  # not strictly necessary, genesis state is provided by this repo
-> ```
->
-> This can significantly reduce the time it takes for your node to sync with the network.
-
-3. Choose your setup:
-
-   a. For running a node without a validator:
-
-   Edit the `.env` file to set `USE_VALIDATOR=false`. Use `GETH_SYNCMODE=snap` and update Prysm variables accordingly. Then run:
+3. Start your node:
    ```bash
    docker compose --profile init --profile node up -d
    ```
 
-   b. For running a validator node:
-
-   Edit the `.env` file to set `USE_VALIDATOR=true`, set the `DEPOSIT_*` variables appropriately, and set the wallet's private key for the deposit in `secrets/deposit_private_key.txt`.
-
-   If you already have validator keys:
-   - Place your keystore files in the `./secrets` directory
-   - Create a `wallet_password.txt` file in the `./secrets` directory with your wallet password
-   - Create an `account_password.txt` file in the `./secrets` directory with your account password
-
-   Then run:
+4. Verify your node is running:
    ```bash
-   # Import existing validator keys:
-   docker compose --profile init --profile manual run --rm validator-import
-
-   # Start all services including the validator:
-   docker compose --profile init --profile validator up -d
+   # View logs for key services
+   docker compose logs -f geth    # Execution client
+   docker compose logs -f beacon  # Consensus client
    ```
 
-   If you need to generate new validator keys:
-   ```bash
-   # Generate validator keys (interactive process):
-   docker compose --profile init --profile manual run --rm validator-keygen
+> **💡 Tip**: Check out the [Fast Syncing](#fast-syncing) section below to significantly speed up your initial node sync!
+>
+> **Note**: If services fail to start, check the configuration validation logs:
+> ```bash
+> docker compose logs check-config-node
+> ```
 
-   # Import the generated validator keys:
-   docker compose --profile init --profile manual run --rm validator-import
+## Validator Setup
+
+Once your node is fully synced, follow these steps to set up and run a validator.
+
+> **⚠️ IMPORTANT**: Running a validator on the Vana network requires whitelisting. Please join our [Discord](https://discord.com/app/invite-with-guild-onboarding/withvana) to request validator permissions before proceeding with setup.
+
+1. Configure validator settings in `.env`:
+   ```bash
+   # Configure validator settings
+   WITHDRAWAL_ADDRESS=<your_withdrawal_address>
+   DEPOSIT_RPC_URL=<your_rpc_url>
+   DEPOSIT_CONTRACT_ADDRESS=<contract_address>
    ```
 
-   If you have not submitted your deposits yet:
+2. Set up validator keys:
+
+   If you have existing keys:
+   - Place keystore files in `./secrets`
+   - Create `wallet_password.txt` and `account_password.txt` in `./secrets`
    ```bash
-   # Submit deposits for your validator:
-   docker compose --profile init --profile manual run --rm submit-deposits
+   # Import existing keys
+   docker compose --profile manual run --rm validator-import
    ```
 
-   When you have submitted your deposits, you can start your validator:
+   If you need new keys:
    ```bash
-   # Start all services including the validator:
-   docker compose --profile init --profile validator up -d
+   # Generate new keys
+   docker compose --profile manual run --rm validator-keygen
+
+   # Import generated keys
+   docker compose --profile manual run --rm validator-import
    ```
 
-4. If the check-config service fails, check its logs:
+3. Submit deposits (if not done already):
    ```bash
-   docker compose logs check-config
+   # Add deposit private key
+   echo "your_private_key" > ./secrets/deposit_private_key.txt
+
+   # Submit deposits
+   docker compose --profile manual run --rm submit-deposits
    ```
+
+4. Configure validator statistics reporting:
+   ```bash
+   # Set stats configuration in .env
+   STATS_SERVER_URL=http://stats.vana.org
+   INSTANCE_NAME="Your Validator Name"
+   VALIDATOR_PUBLIC_KEY=0x...  # Your validator's public key
+   ```
+
+   Get your validator's public key using either method:
+   ```bash
+   # Method 1: From deposit data
+   cat ./secrets/deposit_data-*.json | jq -r '.[0].pubkey'
+
+   # Method 2: List validator accounts
+   docker compose --profile init run --rm validator accounts list --wallet-dir=/vana/wallet
+   ```
+
+   View your node's statistics at [stats.vana.org](https://stats.vana.org). Your node will appear under the name specified in `INSTANCE_NAME`.
+
+5. Start the validator:
+   ```bash
+   docker compose --profile validator up -d
+   ```
+
+   > **Note**: If the validator fails to start, check the configuration validation logs:
+   > ```bash
+   > docker compose logs check-config-validator
+   > ```
+
+### Validator Voluntary Exit
+
+To voluntarily exit your validator, ensure your beacon node is fully synced and run:
+
+```bash
+docker compose --profile init --profile manual run --rm validator-exit
+```
+
+This service requires `account_password.txt` and `wallet_password.txt` in the `secrets` folder.
+
+> **Important**: Exiting your validator is permanent and cannot be reversed. This only signals your intent to exit - it does not withdraw funds. For withdrawal functionality, see the [withdrawal documentation](https://docs.prylabs.network/docs/wallet/exiting-a-validator).
+
+## Validator Approval Process
+
+Before proceeding with setup, you must get your validator whitelisted:
+
+1. Join the [Vana Discord](https://discord.com/app/invite-with-guild-onboarding/withvana) and request validator permissions
+
+2. Generate your validator keys following the [Validator Setup](#optional-validator-setup) section
+
+3. Submit your validator's public key for whitelisting through Discord
+
+4. Wait for confirmation before proceeding with deposits and starting your validator
+## Fast Syncing
+
+There are two recommended methods to speed up your initial node sync:
+
+### 1. Checkpoint Sync
+
+Checkpoint sync is the recommended way to quickly sync your node. You will need:
+
+1. A trusted beacon node that serves checkpoint syncing (checkpoint sync URL)
+2. A specific block root and epoch number that you wish to sync to (weak subjectivity checkpoint)
+
+Configure them in your `.env` file:
+
+```bash
+# Use appropriate URL for your network
+TRUSTED_BEACON_NODE_URL=http://archive.vana.org:3500
+
+# Replace with actual checkpoint from a trusted source
+WEAK_SUBJECTIVITY_CHECKPOINT=0x0000...0000:0  # block root:epoch number
+```
+
+Then uncomment these lines in `docker-compose.yml` under the `beacon` service:
+
+```yaml
+- --weak-subjectivity-checkpoint=${WEAK_SUBJECTIVITY_CHECKPOINT}
+- --checkpoint-sync-url=${TRUSTED_BEACON_NODE_URL}
+- --genesis-beacon-api-url=${TRUSTED_BEACON_NODE_URL}
+```
+
+### 2. Syncing from a Public Snapshot
+
+For a fast initial sync, you can also restore a recent publicly available backup. See the [Backup and Restore](#backup-and-restore) section for detailed instructions on downloading and restoring snapshots.
 
 ## Configuration
 
