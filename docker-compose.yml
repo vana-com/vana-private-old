@@ -36,7 +36,7 @@ services:
       else
         echo "JWT file already exists"
       fi'
-    profiles: ["init"]
+    profiles: ["init", "manual"]
 
   geth-init:
     <<: *default-logging
@@ -56,7 +56,7 @@ services:
        fi"
     environment:
       - REINIT_GETH
-    profiles: ["init"]
+    profiles: ["init", "manual"]
 
   prysm-keygen:
     <<: *default-logging
@@ -74,7 +74,7 @@ services:
       else
         echo "Prysm key already exists"
       fi'
-    profiles: ["init"]
+    profiles: ["init", "manual"]
 
   bootnode-init:
     <<: *default-logging
@@ -91,7 +91,7 @@ services:
       else
         echo "Bootnode key already exists"
       fi'
-    profiles: ["init"]
+    profiles: ["init", "manual"]
 
   check-config-validator:
     <<: *default-logging
@@ -140,7 +140,7 @@ services:
         condition: service_completed_successfully
       jwt-gen:
         condition: service_completed_successfully
-    profiles: ["node"]
+    profiles: ["node", "manual"]
 
   # Main node services
   geth:
@@ -207,7 +207,7 @@ services:
         condition: service_completed_successfully
       bootnode-init:
         condition: service_completed_successfully
-    profiles: ["node", "validator"]
+    profiles: ["node", "validator", "manual"]
 
   beacon:
     <<: *default-logging
@@ -288,7 +288,7 @@ services:
         condition: service_completed_successfully
       check-config-node:
         condition: service_completed_successfully
-    profiles: ["node", "validator"]
+    profiles: ["node", "validator", "manual"]
 
   # Validator services
   validator-keygen:
