@@ -236,9 +236,9 @@ services:
       - PRYSM_BLOB_BATCH_LIMIT_BURST_FACTOR
     command:
       # TODO: To use checkpoint sync, uncomment these lines and ensure that TRUSTED_BEACON_NODE_URL and WEAK_SUBJECTIVITY_CHECKPOINT are set in your .env file
-      #- --weak-subjectivity-checkpoint=${WEAK_SUBJECTIVITY_CHECKPOINT}
-      #- --checkpoint-sync-url=${TRUSTED_BEACON_NODE_URL}
-      #- --genesis-beacon-api-url=${TRUSTED_BEACON_NODE_URL}  # not strictly necessary, genesis state is provided by this repo
+      - --weak-subjectivity-checkpoint=${WEAK_SUBJECTIVITY_CHECKPOINT}
+      - --checkpoint-sync-url=${TRUSTED_BEACON_NODE_URL}
+      - --genesis-beacon-api-url=${TRUSTED_BEACON_NODE_URL}  # not strictly necessary, genesis state is provided by this repo
       - --accept-terms-of-use
       - --chain-id=${CHAIN_ID}
       - --verbosity=info
@@ -258,13 +258,17 @@ services:
       - --grpc-gateway-host=0.0.0.0
       - --grpc-gateway-port=${GRPC_GATEWAY_PORT:-3500}
       - --p2p-host-ip=${EXTERNAL_IP}
-      # Bootnodes are unused for now
-      #- --bootstrap-node=${PRYSM_BOOTNODE_1}
-      - --peer=${PRYSM_PEER_1}
-      - --peer=${PRYSM_PEER_2}
-      - --peer=${PRYSM_PEER_3}
-      - --peer=${PRYSM_PEER_4}
-      - --peer=${PRYSM_PEER_5}
+      # Bootnodes are used for peer discovery
+      - --bootstrap-node=${CL_BOOTNODE_1}
+      - --bootstrap-node=${CL_BOOTNODE_2}
+      - --bootstrap-node=${CL_BOOTNODE_3}
+      - --bootstrap-node=${CL_BOOTNODE_4}
+      - --bootstrap-node=${CL_BOOTNODE_5}
+      #- --peer=${PRYSM_PEER_1}
+      #- --peer=${PRYSM_PEER_2}
+      #- --peer=${PRYSM_PEER_3}
+      #- --peer=${PRYSM_PEER_4}
+      #- --peer=${PRYSM_PEER_5}
       # Only enable peers 6-11 for core validator nodes and relay nodes
       # - --peer=${PRYSM_PEER_6}
       # - --peer=${PRYSM_PEER_7}
