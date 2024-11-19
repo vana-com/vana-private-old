@@ -117,7 +117,7 @@ services:
         condition: service_completed_successfully
       prysm-keygen:
         condition: service_completed_successfully
-    profiles: ["init", "node", "validator", "manual"]
+    profiles: ["validator", "manual"]
     secrets:
       - account_password
       - deposit_private_key
@@ -140,7 +140,7 @@ services:
         condition: service_completed_successfully
       jwt-gen:
         condition: service_completed_successfully
-    profiles: ["node"]
+    profiles: ["node", "validator"]
 
   # Main node services
   geth:
