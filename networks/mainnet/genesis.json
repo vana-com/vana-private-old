@@ -18,8 +18,8 @@
         "terminalTotalDifficulty": 20000000,
         "mergeNetsplitBlock": 0,
 		"terminalTotalDifficultyPassed": true,
-        "shanghaiTime": 1735689600,
-        "cancunTime": 1735689600
+        "shanghaiTime": 1752508825,
+        "cancunTime":   1752508825
     },
     "coinbase": "0x0000000000000000000000000000000000000000",
     "difficulty": "1",
