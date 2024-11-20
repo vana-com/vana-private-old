@@ -241,7 +241,7 @@ services:
       - --genesis-beacon-api-url=${TRUSTED_BEACON_NODE_URL}  # not strictly necessary, genesis state is provided by this repo
       - --accept-terms-of-use
       - --chain-id=${CHAIN_ID}
-      - --verbosity=info
+      - --verbosity=trace
       - --min-sync-peers=1
       - --block-batch-limit=${PRYSM_BLOCK_BATCH_LIMIT:-256}
       - --block-batch-limit-burst-factor=${PRYSM_BLOCK_BATCH_LIMIT_BURST_FACTOR:-8}
@@ -299,26 +299,27 @@ services:
     image: gcr.io/prysmaticlabs/prysm/bootnode:latest
     container_name: bootnode
     volumes:
-      - ./data/consensus:/vana/consensus
+      - ./data/execution:/vana/execution
     ports:
       # Port to listen for discv5 connections
-      - "${DISCV5_PORT:-4000}:${DISCV5_PORT:-4000}"
+      - "${P2P_TCP_PORT:-13000}:${P2P_TCP_PORT:-13000}"
+      - "${P2P_UDP_PORT:-12000}:${P2P_UDP_PORT:-12000}/udp"
       # Port to listen for connections
-      - "${METRICS_PORT:-5000}:${METRICS_PORT:-5000}"
+      - "${METRICS_PORT:-9090}:${METRICS_PORT:-9090}/udp"
     entrypoint: ["/bin/bash", "-c"]
     command:
       - |
         /bootnode \
           --debug \
-          --discv5-port=${DISCV5_PORT:-4000} \
+          --discv5-port=${P2P_UDP_PORT:-12000} \
           --external-ip=${EXTERNAL_IP} \
           --fork-version=${FORK_VERSION} \
           --genesis-root=${GENESIS_ROOT} \
-          --metrics-port=${METRICS_PORT:-5000} \
-          --private=$$(cat /vana/consensus/prysm-key.hex) \
+          --metrics-port=${METRICS_PORT:-9090} \
+          --private=$$(cat /vana/execution/bootnode.key) \
           --seed-node=${CL_BOOTNODE_1}
     depends_on:
-      prysm-keygen:
+      bootnode-init:
         condition: service_completed_successfully
     profiles: ["bootnode"]
 
