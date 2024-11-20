@@ -294,6 +294,34 @@ services:
         condition: service_completed_successfully
     profiles: ["node", "validator"]
 
+  bootnode:
+    <<: *default-logging
+    image: gcr.io/prysmaticlabs/prysm/bootnode:latest
+    container_name: bootnode
+    volumes:
+      - ./data/consensus:/vana/consensus
+    ports:
+      # Port to listen for discv5 connections
+      - "${DISCV5_PORT:-4000}:${DISCV5_PORT:-4000}"
+      # Port to listen for connections
+      - "${METRICS_PORT:-5000}:${METRICS_PORT:-5000}"
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        /bootnode \
+          --debug \
+          --discv5-port=${DISCV5_PORT:-4000} \
+          --external-ip=${EXTERNAL_IP} \
+          --fork-version=${FORK_VERSION} \
+          --genesis-root=${GENESIS_ROOT} \
+          --metrics-port=${METRICS_PORT:-5000} \
+          --private=$$(cat /vana/consensus/prysm-key.hex) \
+          --seed-node=${CL_BOOTNODE_1}
+    depends_on:
+      prysm-keygen:
+        condition: service_completed_successfully
+    profiles: ["bootnode"]
+
   # Validator services
   validator-keygen:
     <<: *default-logging
