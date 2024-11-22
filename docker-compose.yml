@@ -260,6 +260,10 @@ services:
       - --p2p-host-ip=${EXTERNAL_IP}
       # Bootnodes are used for peer discovery
       - --bootstrap-node=${CL_BOOTNODE_6}
+      - --bootstrap-node=${CL_BOOTNODE_7}
+      - --bootstrap-node=${CL_BOOTNODE_8}
+      - --bootstrap-node=${CL_BOOTNODE_9}
+      - --bootstrap-node=${CL_BOOTNODE_10}
       #- --peer=${PRYSM_PEER_1}
       #- --peer=${PRYSM_PEER_2}
       #- --peer=${PRYSM_PEER_3}
