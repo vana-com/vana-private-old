@@ -315,7 +315,7 @@ services:
           --external-ip=${EXTERNAL_IP} \
           --fork-version=${FORK_VERSION} \
           --genesis-root=${GENESIS_ROOT} \
-          --metrics-port=${METRICS_PORT:-9090} \
+          --metrics-port=${GRPC_GATEWAY_PORT:-3500} \
           --private=$$(cat /vana/consensus/prysm-key.hex) \
           --seed-node=${CL_SEEDNODE}
     depends_on:
