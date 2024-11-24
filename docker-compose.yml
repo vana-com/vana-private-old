@@ -264,12 +264,19 @@ services:
       - --bootstrap-node=${CL_BOOTNODE_3}
       - --bootstrap-node=${CL_BOOTNODE_4}
       - --bootstrap-node=${CL_BOOTNODE_5}
+      - --bootstrap-node=${CL_BOOTNODE_6}
+      - --bootstrap-node=${CL_BOOTNODE_7}
+      - --bootstrap-node=${CL_BOOTNODE_8}
+      - --bootstrap-node=${CL_BOOTNODE_9}
+      - --bootstrap-node=${CL_BOOTNODE_10}
+      # Uncomment to use trusted peers.
+      # Note: the above lighweight bootnodes are not suitable to be used as trusted peers.
       #- --peer=${PRYSM_PEER_1}
       #- --peer=${PRYSM_PEER_2}
       #- --peer=${PRYSM_PEER_3}
       #- --peer=${PRYSM_PEER_4}
       #- --peer=${PRYSM_PEER_5}
-      # Only enable peers 6-11 for core validator nodes and relay nodes
+      # Only enable peers 6-11 for core validator nodes
       # - --peer=${PRYSM_PEER_6}
       # - --peer=${PRYSM_PEER_7}
       # - --peer=${PRYSM_PEER_8}
@@ -277,8 +284,9 @@ services:
       # - --peer=${PRYSM_PEER_10}
       # - --peer=${PRYSM_PEER_11}
       # Add more peers as needed, make sure to add them to .env
-      - --p2p-static-id
-      - --p2p-priv-key=/vana/consensus/prysm-key.hex
+      # Uncomment the two lines below to enable static node IDs and private keys
+      # - --p2p-static-id
+      # - --p2p-priv-key=/vana/consensus/prysm-key.hex
       - --suggested-fee-recipient=${WITHDRAWAL_ADDRESS}
       - --slots-per-archive-point=${PRYSM_SLOTS_PER_ARCHIVE_POINT:-512}
       # Uncomment this to enable this beacon node as a checkpoint sync source
