@@ -259,11 +259,6 @@ services:
       - --grpc-gateway-port=${GRPC_GATEWAY_PORT:-3500}
       - --p2p-host-ip=${EXTERNAL_IP}
       # Bootnodes are used for peer discovery
-      - --bootstrap-node=${CL_BOOTNODE_1}
-      - --bootstrap-node=${CL_BOOTNODE_2}
-      - --bootstrap-node=${CL_BOOTNODE_3}
-      - --bootstrap-node=${CL_BOOTNODE_4}
-      - --bootstrap-node=${CL_BOOTNODE_5}
       - --bootstrap-node=${CL_BOOTNODE_6}
       - --bootstrap-node=${CL_BOOTNODE_7}
       - --bootstrap-node=${CL_BOOTNODE_8}
