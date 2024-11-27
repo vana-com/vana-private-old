@@ -161,7 +161,7 @@ services:
       # Do not expose the websocket API used by the stats client
       # - "${GETH_WS_PORT:-8546}:${GETH_WS_PORT:-8546}"
     command:
-      - --verbosity=3  # 0=silent, 1=error, 2=warn, 3=info, 4=debug, 5=detail
+      - --verbosity=4  # 0=silent, 1=error, 2=warn, 3=info, 4=debug, 5=detail
       - --networkid=${CHAIN_ID}
       - --datadir=/root/.ethereum
       - --nat=extip:${EXTERNAL_IP}
@@ -169,7 +169,8 @@ services:
       - --syncmode=${GETH_SYNCMODE:-full}
       - --state.scheme=${GETH_STATE_SCHEME:-path}
       - --gcmode=${GETH_GCMODE:-full}
-      - --bootnodes=${GETH_BOOTNODES}
+      #- --bootnodes=${GETH_BOOTNODES}
+      - --nodiscover
       # Enable HTTP RPC, available at http://host:${HTTP_PORT:-8545}
       # If you want to limit access to certain IPs, use --http.corsdomain="..." and --http.vhosts="..."
       - --http
@@ -216,6 +217,7 @@ services:
     volumes:
       - ./data/jwt.hex:/vana/jwt.hex:ro
       - ./data/consensus:/vana/consensus
+      - ./data/execution:/vana/execution
       - ./networks/${NETWORK}/genesis.ssz:/vana/consensus/genesis.ssz:ro
       - ./networks/${NETWORK}/config.yml:/vana/consensus/config.yml:ro
     ports:
@@ -225,8 +227,8 @@ services:
       - "127.0.0.1:${GRPC_GATEWAY_PORT:-3500}:${GRPC_GATEWAY_PORT:-3500}"
       # Or, if you want to make your API public, you can use this... but we recommend using the caddy service instead:
       # - "${GRPC_GATEWAY_PORT:-3500}:${GRPC_GATEWAY_PORT:-3500}"
-      - "${P2P_TCP_PORT:-13000}:${P2P_TCP_PORT:-13000}"
-      - "${P2P_UDP_PORT:-12000}:${P2P_UDP_PORT:-12000}/udp"
+      - "127.0.0.1:${P2P_TCP_PORT:-13000}:${P2P_TCP_PORT:-13000}"
+      - "127.0.0.1:${P2P_UDP_PORT:-12000}:${P2P_UDP_PORT:-12000}/udp"
     environment:
       - WITHDRAWAL_ADDRESS
       - PRYSM_SLOTS_PER_ARCHIVE_POINT
@@ -236,13 +238,14 @@ services:
       - PRYSM_BLOB_BATCH_LIMIT_BURST_FACTOR
     command:
       # TODO: To use checkpoint sync, uncomment these lines and ensure that TRUSTED_BEACON_NODE_URL and WEAK_SUBJECTIVITY_CHECKPOINT are set in your .env file
-      - --weak-subjectivity-checkpoint=${WEAK_SUBJECTIVITY_CHECKPOINT}
-      - --checkpoint-sync-url=${TRUSTED_BEACON_NODE_URL}
-      - --genesis-beacon-api-url=${TRUSTED_BEACON_NODE_URL}  # not strictly necessary, genesis state is provided by this repo
+      #- --weak-subjectivity-checkpoint=${WEAK_SUBJECTIVITY_CHECKPOINT}
+      #- --checkpoint-sync-url=${TRUSTED_BEACON_NODE_URL}
+      #- --genesis-beacon-api-url=${TRUSTED_BEACON_NODE_URL}  # not strictly necessary, genesis state is provided by this repo
       - --accept-terms-of-use
       - --chain-id=${CHAIN_ID}
-      - --verbosity=info
-      - --min-sync-peers=1
+      - --verbosity=debug
+      - --min-sync-peers=0
+      - --minimum-peers-per-subnet=0
       - --block-batch-limit=${PRYSM_BLOCK_BATCH_LIMIT:-256}
       - --block-batch-limit-burst-factor=${PRYSM_BLOCK_BATCH_LIMIT_BURST_FACTOR:-8}
       - --blob-batch-limit=${PRYSM_BLOB_BATCH_LIMIT:-256}
@@ -251,7 +254,9 @@ services:
       - --genesis-state=/vana/consensus/genesis.ssz
       - --chain-config-file=/vana/consensus/config.yml
       - --contract-deployment-block=0
-      - --execution-endpoint=http://geth:${AUTHRPC_PORT:-8551}
+      - --interop-eth1data-votes
+      #- --execution-endpoint=http://geth:${AUTHRPC_PORT:-8551}
+      - --execution-endpoint=/vana/execution/geth.ipc
       - --jwt-secret=/vana/jwt.hex
       - --rpc-host=0.0.0.0
       - --rpc-port=${RPC_PORT:-4000}
@@ -259,11 +264,12 @@ services:
       - --grpc-gateway-port=${GRPC_GATEWAY_PORT:-3500}
       - --p2p-host-ip=${EXTERNAL_IP}
       # Bootnodes are used for peer discovery
-      - --bootstrap-node=${CL_BOOTNODE_1}
-      - --bootstrap-node=${CL_BOOTNODE_2}
-      - --bootstrap-node=${CL_BOOTNODE_3}
-      - --bootstrap-node=${CL_BOOTNODE_4}
-      - --bootstrap-node=${CL_BOOTNODE_5}
+      - --bootstrap-node=
+      #- --bootstrap-node=${CL_BOOTNODE_1}
+      #- --bootstrap-node=${CL_BOOTNODE_2}
+      #- --bootstrap-node=${CL_BOOTNODE_3}
+      #- --bootstrap-node=${CL_BOOTNODE_4}
+      #- --bootstrap-node=${CL_BOOTNODE_5}
       #- --peer=${PRYSM_PEER_1}
       #- --peer=${PRYSM_PEER_2}
       #- --peer=${PRYSM_PEER_3}
@@ -282,7 +288,7 @@ services:
       - --suggested-fee-recipient=${WITHDRAWAL_ADDRESS}
       - --slots-per-archive-point=${PRYSM_SLOTS_PER_ARCHIVE_POINT:-512}
       # Uncomment this to enable this beacon node as a checkpoint sync source
-      # - --enable-debug-rpc-endpoints
+      - --enable-debug-rpc-endpoints
     depends_on:
       geth:
         condition: service_started
@@ -336,7 +342,7 @@ services:
     # depends_on:
     #   validator-keygen:
     #     condition: service_completed_successfully
-    profiles: ["manual", "validator"]
+    profiles: ["manual"]
 
   validator:
     <<: *default-logging
@@ -351,12 +357,14 @@ services:
       - WITHDRAWAL_ADDRESS
     command:
       - --accept-terms-of-use
-      - --verbosity=info
+      - --verbosity=debug
       - --beacon-rpc-provider=beacon:${RPC_PORT:-4000}
       - --beacon-rest-api-provider=${EXTERNAL_IP}:${RPC_PORT:-4000}
       - --datadir=/vana/validator
-      - --wallet-dir=/vana/wallet
-      - --wallet-password-file=/run/secrets/wallet_password
+      - --interop-num-validators=10
+      - --interop-start-index=0
+      #- --wallet-dir=/vana/wallet
+      #- --wallet-password-file=/run/secrets/wallet_password
       - --chain-config-file=/vana/consensus/config.yml
       - --suggested-fee-recipient=${WITHDRAWAL_ADDRESS}
       - --monitoring-host=0.0.0.0
@@ -366,10 +374,6 @@ services:
     depends_on:
       beacon:
         condition: service_started
-      validator-import:
-        condition: service_completed_successfully
-      check-config-validator:
-        condition: service_completed_successfully
     secrets:
       - wallet_password
     profiles: ["validator"]
