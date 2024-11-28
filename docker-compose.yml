@@ -374,6 +374,36 @@ services:
       - wallet_password
     profiles: ["validator"]
 
+  interopvalidator:
+    <<: *default-logging
+    image: gcr.io/prysmaticlabs/prysm/validator:${PRYSM_VERSION:-latest}
+    container_name: interopvalidator
+    volumes:
+      - ./data/validator:/vana/validator
+      - ./data/validator/wallet:/vana/wallet
+      - ./networks/${NETWORK}/config.yml:/vana/consensus/config.yml:ro
+      - ./backups:/backups
+    environment:
+      - WITHDRAWAL_ADDRESS
+    command:
+      - --accept-terms-of-use
+      - --verbosity=info
+      - --beacon-rpc-provider=beacon:${RPC_PORT:-4000}
+      - --beacon-rest-api-provider=${EXTERNAL_IP}:${RPC_PORT:-4000}
+      - --datadir=/vana/validator
+      - --chain-config-file=/vana/consensus/config.yml
+      - --interop-num-validators=1
+      - --interop-start-index=2
+      - --suggested-fee-recipient=${WITHDRAWAL_ADDRESS}
+      - --monitoring-host=0.0.0.0
+      - --monitoring-port=8081
+      - --enable-db-backup-webhook=${BACKUP_VALIDATOR_DB:-false}
+      - --db-backup-output-dir=/backups
+    depends_on:
+      beacon:
+        condition: service_started
+    profiles: ["interopvalidator"]
+
   submit-deposits:
     <<: *default-logging
     image: ghcr.io/foundry-rs/foundry:latest
