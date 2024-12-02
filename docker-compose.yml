@@ -78,7 +78,7 @@ services:
 
   bootnode-init:
     <<: *default-logging
-    image: ethereum/client-go:${GETH_ALLTOOLS_VERSION:-alltools-latest}
+    image: ethereum/client-go:${GETH_ALLTOOLS_VERSION:-alltools-v1.14.12}
     container_name: bootnode-init
     volumes:
       - ./data/execution:/vana/execution
