@@ -288,7 +288,7 @@ docker compose --profile init --profile manual run --rm validator-keygen
 
 Import validator keys:
 ```bash
-docker compose run --rm validator-import
+docker compose run --profile manual --rm validator-import
 ```
 
 ### Deleting Data
