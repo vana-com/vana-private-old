@@ -154,6 +154,7 @@ services:
       # Do not expose the auth RPC port used by the beacon node
       #- "${AUTHRPC_PORT:-8551}:${AUTHRPC_PORT:-8551}"
       - "${P2P_PORT:-30303}:${P2P_PORT:-30303}"
+      - "${P2P_PORT:-30303}:${P2P_PORT:-30303}/udp"
       # Expose HTTP RPC on port 8545 to the host only
       - "127.0.0.1:${HTTP_PORT:-8545}:${HTTP_PORT:-8545}"
       # Or, if you want to make your API public, you can use this... but we recommend using the caddy service instead:
@@ -166,6 +167,7 @@ services:
       - --datadir=/root/.ethereum
       - --nat=extip:${EXTERNAL_IP}
       - --port=${P2P_PORT:-30303}
+      - --discovery.port=${P2P_PORT:-30303}
       - --syncmode=${GETH_SYNCMODE:-full}
       - --state.scheme=${GETH_STATE_SCHEME:-path}
       - --gcmode=${GETH_GCMODE:-full}
