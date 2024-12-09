@@ -212,11 +212,12 @@ services:
 
   nethermind:
     <<: *default-logging
-    image: nethermind/nethermind:mainnet
+    image: nethermind/nethermind:latest
     container_name: nethermind
     volumes:
       - ./data/execution:/nethermind/data
       - ./data/jwt.hex:/nethermind/jwt.hex:ro
+      - ./networks/${NETWORK}/genesis_nethermind.json:/vana/execution/genesis.json:ro
     ports:
       - "${P2P_PORT:-30303}:${P2P_PORT:-30303}"
       - "${P2P_PORT:-30303}:${P2P_PORT:-30303}/udp"
@@ -224,14 +225,20 @@ services:
       - "127.0.0.1:${HTTP_PORT:-8545}:${HTTP_PORT:-8545}"
     command:
       - --datadir=/nethermind/data
+      # Init
+      - --Init.ChainSpecPath=/vana/execution/genesis.json
+      # Merge
+      - --Merge.FinalTotalDifficulty=20000000
       # Keystore
-      - --KeyStore.EnodeKeyFile=/nethermind/data/bootnode.key
+      #- --KeyStore.EnodeKeyFile=/nethermind/data/bootnode.key
       # JsonRpc
       - --JsonRpc.Enabled=true
       - --JsonRpc.Host=0.0.0.0
       - --JsonRpc.Port=${HTTP_PORT:-8545}
+      - --JsonRpc.EnabledModules=[eth,net,web3,txpool,admin]
       - --JsonRpc.EngineHost=0.0.0.0
       - --JsonRpc.EnginePort=${AUTHRPC_PORT:-8551}
+      - --JsonRpc.JwtSecretFile=/nethermind/jwt.hex
       # Network
       - --Network.P2PPort=${P2P_PORT:-30303}
       - --Network.DiscoveryPort=${P2P_PORT:-30303}
@@ -289,7 +296,7 @@ services:
       - --genesis-state=/vana/consensus/genesis.ssz
       - --chain-config-file=/vana/consensus/config.yml
       - --contract-deployment-block=0
-      - --execution-endpoint=http://geth:${AUTHRPC_PORT:-8551}
+      - --execution-endpoint=http://nethermind:${AUTHRPC_PORT:-8551}
       - --jwt-secret=/vana/jwt.hex
       - --rpc-host=0.0.0.0
       - --rpc-port=${RPC_PORT:-4000}
@@ -337,8 +344,8 @@ services:
       # Uncomment this to enable this beacon node as a checkpoint sync source
       # - --enable-debug-rpc-endpoints
     depends_on:
-      geth:
-        condition: service_started
+      #geth:
+        #condition: service_started
       prysm-keygen:
         condition: service_completed_successfully
       jwt-gen:
