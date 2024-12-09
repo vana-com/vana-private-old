@@ -1,0 +1,73 @@
+{
+    "version": "1",
+    "engine": {
+        "Ethash": {}
+    },
+    "params": {
+        "eip150Transition": "0x0",
+        "eip160Transition": "0x0",
+        "eip161abcTransition": "0x0",
+        "eip161dTransition": "0x0",
+        "eip155Transition": "0x0",
+        "maxCodeSizeTransition": "0x0",
+        "maxCodeSize": "0x6000",
+        "maximumExtraDataSize": "0x20",
+        "eip140Transition": "0x0",
+        "eip211Transition": "0x0",
+        "eip214Transition": "0x0",
+        "eip658Transition": "0x0",
+        "eip145Transition": "0x0",
+        "eip1014Transition": "0x0",
+        "eip1052Transition": "0x0",
+        "eip1283Transition": "0x0",
+        "eip1283DisableTransition": "0x0",
+        "eip152Transition": "0x0",
+        "eip1108Transition": "0x0",
+        "eip1344Transition": "0x0",
+        "eip1884Transition": "0x0",
+        "eip2028Transition": "0x0",
+        "eip2200Transition": "0x0",
+        "eip2565Transition": "0x0",
+        "eip2718Transition": "0x0",
+        "eip2929Transition": "0x0",
+        "eip2930Transition": "0x0",
+        "eip1559Transition": "0x0",
+        "eip3238Transition": "0x0",
+        "eip3529Transition": "0x0",
+        "eip3541Transition": "0x0",
+        "eip3198Transition": "0x0",
+        "eip3651TransitionTimestamp": "0x68752999",
+        "eip3855TransitionTimestamp": "0x68752999",
+        "eip3860TransitionTimestamp": "0x68752999",
+        "eip4895TransitionTimestamp": "0x68752999",
+        "eip4844TransitionTimestamp": "0x68752999",
+        "eip4788TransitionTimestamp": "0x68752999",
+        "eip1153TransitionTimestamp": "0x68752999",
+        "eip5656TransitionTimestamp": "0x68752999",
+        "eip6780TransitionTimestamp": "0x68752999",
+        "networkID": "0x5c8",
+        "chainID": "0x5c8",
+        "terminalTotalDifficulty": "0x1312d00"
+    },
+    "genesis": {
+        "coinbase": "0x0000000000000000000000000000000000000000",
+        "difficulty": "0x1",
+        "gasLimit": "0x1c9c380",
+        "extraData": "0x00"
+    },
+    "accounts": {
+        "0x4e59b44847b379578588920ca78fbf26c0b4956c": {
+            "code": "0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe03601600081602082378035828234f58015156039578182fd5b8082525050506014600cf3",
+            "balance": "0x0"
+        },
+        "0x2c6A694c3C50f012d8287fD9dB4CF98c99680a81": {
+            "balance": "0x4A1E1482B78AE8A80000"
+        },
+        "0x2AC93684679a5bdA03C6160def908CdB8D46792f": {
+            "balance": "0x8AC7230489E80000"
+        },
+        "0x7492933BB94F79df306FeB86A4ed1927a0a51B31": {
+            "balance": "0x5CE2AABFD81EE9BE700000"
+        }
+    }
+}
