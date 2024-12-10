@@ -1,0 +1,11 @@
+{
+  "apps": [
+    {
+      "name": "vana-stats-client",
+      "script": "/home/vananetintel/vana-stats-client/dist/node.js",
+      "instances": 1,
+      "watch": true,
+      "autorestart": true
+    }
+  ]
+}
