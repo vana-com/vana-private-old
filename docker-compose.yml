@@ -294,8 +294,9 @@ services:
       # - --peer=${PRYSM_PEER_10}
       # - --peer=${PRYSM_PEER_11}
       # Add more peers as needed, make sure to add them to .env
-      - --p2p-static-id
-      - --p2p-priv-key=/vana/consensus/prysm-key.hex
+      # Uncomment the two below options to assign a static id to the node
+      #- --p2p-static-id
+      #- --p2p-priv-key=/vana/consensus/prysm-key.hex
       - --suggested-fee-recipient=${WITHDRAWAL_ADDRESS}
       - --slots-per-archive-point=${PRYSM_SLOTS_PER_ARCHIVE_POINT:-512}
       # Uncomment this to enable this beacon node as a checkpoint sync source
