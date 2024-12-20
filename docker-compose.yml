@@ -656,6 +656,7 @@ services:
       - BEACON_RPC_PROVIDER=http://beacon:${GRPC_GATEWAY_PORT:-3500}
       - WS_SECRET=${WS_SECRET}
     profiles:
+      - node
       - validator
       - monitoring
 
