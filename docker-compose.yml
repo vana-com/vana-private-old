@@ -104,6 +104,7 @@ services:
     environment:
       - NETWORK
       - WITHDRAWAL_ADDRESS
+      - FEE_RECIPIENT_ADDRESS
       - DEPOSIT_RPC_URL
       - DEPOSIT_CONTRACT_ADDRESS
       - USE_VALIDATOR=true
@@ -231,6 +232,7 @@ services:
       - "${P2P_UDP_PORT:-12000}:${P2P_UDP_PORT:-12000}/udp"
     environment:
       - WITHDRAWAL_ADDRESS
+      - FEE_RECIPIENT_ADDRESS
       - PRYSM_SLOTS_PER_ARCHIVE_POINT
       - PRYSM_BLOCK_BATCH_LIMIT
       - PRYSM_BLOCK_BATCH_LIMIT_BURST_FACTOR
@@ -297,7 +299,7 @@ services:
       # Uncomment the two below options to assign a static id to the node
       #- --p2p-static-id
       #- --p2p-priv-key=/vana/consensus/prysm-key.hex
-      - --suggested-fee-recipient=${WITHDRAWAL_ADDRESS}
+      - --suggested-fee-recipient=${FEE_RECIPIENT_ADDRESS}
       - --slots-per-archive-point=${PRYSM_SLOTS_PER_ARCHIVE_POINT:-512}
       # Uncomment this to enable this beacon node as a checkpoint sync source
       # - --enable-debug-rpc-endpoints
@@ -325,6 +327,7 @@ services:
     environment:
       - NUM_VALIDATORS
       - WITHDRAWAL_ADDRESS
+      - FEE_RECIPIENT_ADDRESS
       - NETWORK
       - LANGUAGE
     entrypoint: "/vana/container-scripts/validator-keygen.sh"
@@ -367,6 +370,7 @@ services:
       - ./backups:/backups
     environment:
       - WITHDRAWAL_ADDRESS
+      - FEE_RECIPIENT_ADDRESS
     command:
       - --accept-terms-of-use
       - --verbosity=info
@@ -376,7 +380,7 @@ services:
       - --wallet-dir=/vana/wallet
       - --wallet-password-file=/run/secrets/wallet_password
       - --chain-config-file=/vana/consensus/config.yml
-      - --suggested-fee-recipient=${WITHDRAWAL_ADDRESS}
+      - --suggested-fee-recipient=${FEE_RECIPIENT_ADDRESS}
       - --monitoring-host=0.0.0.0
       - --monitoring-port=8081
       - --enable-db-backup-webhook=${BACKUP_VALIDATOR_DB:-false}
