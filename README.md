@@ -60,6 +60,7 @@ Once your node is fully synced, follow these steps to set up and run a validator
    ```bash
    # Configure validator settings
    WITHDRAWAL_ADDRESS=<your_withdrawal_address>
+   FEE_RECIPIENT_ADDRESS=<your_suggested_fee_recipient>
    DEPOSIT_RPC_URL=<your_rpc_url>
    DEPOSIT_CONTRACT_ADDRESS=<contract_address>
    ```

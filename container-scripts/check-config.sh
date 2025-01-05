@@ -42,6 +42,13 @@ if [ "$USE_VALIDATOR" = "true" ]; then
       exit 1
   fi
 
+  # Check if FEE_RECIPIENT_ADDRESS is set and not the default value
+  if [ -z "$FEE_RECIPIENT_ADDRESS" ] || [ "$FEE_RECIPIENT_ADDRESS" = "0x0000000000000000000000000000000000000000" ]; then
+      echo "Error: FEE_RECIPIENT_ADDRESS is not set or is still the default value."
+      echo "Please set a valid fee recipient address in your .env file."
+      exit 1
+  fi
+
   # Check if validator keys exist and have been imported
   if [ ! -d /vana/secrets ] || [ -z "$(ls -A /vana/secrets)" ]; then
     echo "Error: Validator keys not found in /vana/secrets. See README.md for instructions on how to import validator keys."
