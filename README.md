@@ -78,7 +78,7 @@ Once your node is fully synced, follow these steps to set up and run a validator
    If you need new keys:
    ```bash
    # Generate new keys
-   docker compose --profile manual run --rm validator-keygen
+   docker compose run --rm validator-keygen
 
    # Import generated keys
    docker compose --profile manual run --rm validator-import
