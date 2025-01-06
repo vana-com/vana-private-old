@@ -2,6 +2,21 @@
 
 set -e
 
+# Check NETWORK
+if [ "$NETWORK" != "moksha" ] && [ "$NETWORK" != "maya" ] && [ "$NETWORK" != "mainnet" ]; then
+  echo "Error: Invalid NETWORK '$NETWORK', must be either 'moksha' or 'maya' or 'mainnet'"
+  exit 1
+fi
+
+echo "NETWORK check passed: $NETWORK"
+
+# Check if WITHDRAWAL_ADDRESS is set and not the default value
+if [ -z "$WITHDRAWAL_ADDRESS" ] || [ "$WITHDRAWAL_ADDRESS" = "0x0000000000000000000000000000000000000000" ]; then
+    echo "Error: WITHDRAWAL_ADDRESS is not set or is still the default value."
+    echo "Please set a valid withdrawal address in your .env file."
+    exit 1
+fi
+
 python3 -m staking_deposit.deposit --language=${LANGUAGE:-English} new-mnemonic \
   --mnemonic_language=${LANGUAGE:-English} \
   --num_validators=${NUM_VALIDATORS:-1} \
