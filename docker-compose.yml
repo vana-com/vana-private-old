@@ -118,7 +118,7 @@ services:
         condition: service_completed_successfully
       prysm-keygen:
         condition: service_completed_successfully
-    profiles: ["validator", "manual"]
+    profiles: ["validator"]
     secrets:
       - account_password
       - deposit_private_key
