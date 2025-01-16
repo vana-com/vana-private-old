@@ -1,3 +1,8 @@
+# DEPRECATED, please navigate to [vana-com/vana](https://github.com/vana-com/vana)
+
+
+
+
 # Vana PoS Network Validator Setup
 
 This guide will help you set up a validator node for the Vana Proof-of-Stake (PoS) network using Docker.
