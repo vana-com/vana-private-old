@@ -23,6 +23,46 @@ if [ ! -f /vana/data/jwt.hex ]; then
 fi
 
 echo "JWT secret check passed"
+
+# Check stats-related configuration
+if [ -z "$STATS_SERVICE_URL" ]; then
+  echo "Error: STATS_SERVICE_URL is not set."
+  echo "Please set the stats service URL in your .env file."
+  exit 1
+fi
+
+echo "STATS_SERVICE_URL check passed"
+
+# Check NODE_NAME
+if [ -z "$NODE_NAME" ] || [ "$NODE_NAME" = "Example Node" ]; then
+  echo "Error: NODE_NAME is not set or is still the default value."
+  echo "Please set a unique node name in your .env file."
+  exit 1
+fi
+
+echo "NODE_NAME check passed"
+
+# Check STATS_API_KEY if provided
+if [ -n "$STATS_API_KEY" ]; then
+  echo "STATS_API_KEY check passed"
+else
+  echo "Note: STATS_API_KEY is not set. Stats will be reported anonymously."
+fi
+
+# Check STATS_LOG_LEVEL
+if [ -n "$STATS_LOG_LEVEL" ]; then
+  case "$STATS_LOG_LEVEL" in
+    info|debug|error|warn) ;;
+    *)
+      echo "Error: Invalid STATS_LOG_LEVEL '$STATS_LOG_LEVEL'. Must be one of: info, debug, error, warn"
+      exit 1
+      ;;
+  esac
+  echo "STATS_LOG_LEVEL check passed"
+else
+  echo "Note: STATS_LOG_LEVEL not set, defaulting to 'info'"
+fi
+
 # Check if we need to perform validator-related checks
 if [ "$USE_VALIDATOR" = "true" ]; then
   echo "Performing validator-specific checks..."
@@ -80,23 +120,14 @@ if [ "$USE_VALIDATOR" = "true" ]; then
 
   echo "DEPOSIT_CONTRACT_ADDRESS check passed"
 
-  # Check VALIDATOR_PUBLIC_KEY
-  if [ -z "$VALIDATOR_PUBLIC_KEY" ] || [ "$VALIDATOR_PUBLIC_KEY" = "0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000" ]; then
-    echo "Error: VALIDATOR_PUBLIC_KEY is not set or is still the default value."
-    echo "Please set a valid validator public key in your .env file."
+  # Check VALIDATOR_PUBLIC_KEYS
+  if [ -z "$VALIDATOR_PUBLIC_KEYS" ] || [ "$VALIDATOR_PUBLIC_KEYS" = "0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000" ]; then
+    echo "Error: VALIDATOR_PUBLIC_KEYS is not set or is still the default value."
+    echo "Please set valid validator public keys in your .env file."
     exit 1
   fi
 
-  echo "VALIDATOR_PUBLIC_KEY check passed"
-
-  # Check INSTANCE_NAME
-  if [ -z "$INSTANCE_NAME" ] || [ "$INSTANCE_NAME" = "Example Validator" ]; then
-    echo "Error: INSTANCE_NAME is not set or is still the default value."
-    echo "Please set a unique instance name in your .env file."
-    exit 1
-  fi
-
-  echo "INSTANCE_NAME check passed"
+  echo "VALIDATOR_PUBLIC_KEYS check passed"
 else
   echo "Skipping validator-specific checks..."
 fi
